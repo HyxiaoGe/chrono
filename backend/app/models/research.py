@@ -112,4 +112,4 @@ class SSEEventType(StrEnum):
     SKELETON = "skeleton"
     NODE_DETAIL = "node_detail"
     COMPLETE = "complete"
-    ERROR = "error"
+    RESEARCH_ERROR = "research_error"

@@ -206,7 +206,7 @@ class Orchestrator:
         except Exception:
             logger.exception("Research execution failed")
             await session.push(
-                SSEEventType.ERROR,
+                SSEEventType.RESEARCH_ERROR,
                 {
                     "error": "research_failed",
                     "message": "Research execution failed. Please try again.",
