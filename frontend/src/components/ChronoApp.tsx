@@ -5,6 +5,7 @@ import type {
   AppPhase,
   ResearchProposal,
   TimelineNode,
+  SynthesisData,
   CompleteData,
   ProgressData,
   SkeletonNodeData,
@@ -28,6 +29,7 @@ export function ChronoApp() {
   const [streamSessionId, setStreamSessionId] = useState<string | null>(null);
   const [nodes, setNodes] = useState<TimelineNode[]>([]);
   const [progressMessage, setProgressMessage] = useState("");
+  const [synthesisData, setSynthesisData] = useState<SynthesisData | null>(null);
   const [completeData, setCompleteData] = useState<CompleteData | null>(null);
 
   function handleSearch(topic: string) {
@@ -37,7 +39,7 @@ export function ChronoApp() {
         const res = await fetch("/api/research", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ topic }),
+          body: JSON.stringify({ topic, language: navigator.language }),
         });
         if (!res.ok) {
           setError("Service temporarily unavailable. Please try again.");
@@ -100,6 +102,10 @@ export function ChronoApp() {
       );
     }, []),
 
+    onSynthesis: useCallback((data: SynthesisData) => {
+      setSynthesisData(data);
+    }, []),
+
     onComplete: useCallback((data: CompleteData) => {
       setCompleteData(data);
       setProgressMessage("");
@@ -128,6 +134,7 @@ export function ChronoApp() {
         <Timeline
           nodes={nodes}
           progressMessage={progressMessage}
+          synthesisData={synthesisData}
           completeData={completeData}
           language={language}
         />

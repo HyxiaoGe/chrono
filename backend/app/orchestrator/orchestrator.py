@@ -6,6 +6,7 @@ from pydantic_ai.models.openrouter import OpenRouterModel
 
 from app.agents.detail import run_detail_agent
 from app.agents.milestone import run_milestone_agent
+from app.agents.synthesizer import run_synthesizer_agent
 from app.config import settings
 from app.models.research import ResearchProposal, ResearchRequest, SSEEventType
 from app.models.session import ResearchSession, SessionStatus
@@ -24,6 +25,11 @@ _PROGRESS_MESSAGES: dict[str, dict[str, str]] = {
         "zh": "正在深度补充节点详情...",
         "en": "Enriching timeline details...",
         "ja": "タイムラインの詳細を補充中...",
+    },
+    "synthesis": {
+        "zh": "正在生成调研总结...",
+        "en": "Generating research summary...",
+        "ja": "調査サマリーを生成中...",
     },
 }
 
@@ -102,9 +108,17 @@ _proposal_agent = Agent(
 )
 
 
+def _normalize_language(language: str) -> str:
+    """Normalize BCP47 language tag to short form. Returns '' for 'auto'."""
+    if language == "auto":
+        return ""
+    return language.split("-")[0].lower()
+
+
 def _get_progress_message(phase: str, language: str) -> str:
     messages = _PROGRESS_MESSAGES.get(phase, {})
-    return messages.get(language, messages.get("en", "Processing..."))
+    short = language.split("-")[0].lower()
+    return messages.get(short, messages.get("en", "Processing..."))
 
 
 class Orchestrator:
@@ -112,12 +126,18 @@ class Orchestrator:
         self.tavily = tavily
 
     async def create_proposal(self, request: ResearchRequest) -> ResearchProposal:
-        result = await _proposal_agent.run(
-            f"请评估以下调研主题并生成调研提案：{request.topic}",
-        )
+        language = _normalize_language(request.language)
+        if language:
+            prompt = (
+                f"请评估以下调研主题并生成调研提案：{request.topic}\n\n"
+                f'要求：所有文本字段使用 {language} 输出。设置 language 字段为 "{language}"。'
+            )
+        else:
+            prompt = f"请评估以下调研主题并生成调研提案：{request.topic}"
+        result = await _proposal_agent.run(prompt)
         proposal = result.output
-        if request.language != "auto":
-            proposal = proposal.model_copy(update={"language": request.language})
+        if language:
+            proposal = proposal.model_copy(update={"language": language})
         return proposal
 
     async def execute_research(self, session: ResearchSession) -> None:
@@ -181,17 +201,47 @@ class Orchestrator:
                         logger.warning("Detail agent failed for node %s", node["id"])
                         return
                 detail_completed += 1
+                node["details"] = detail.model_dump()
                 await session.push(
                     SSEEventType.NODE_DETAIL,
                     {
                         "node_id": node["id"],
-                        "details": detail.model_dump(),
+                        "details": node["details"],
                     },
                 )
 
             async with asyncio.TaskGroup() as tg:
                 for node in nodes:
                     tg.create_task(_enrich_node(node))
+
+            # --- Phase 3: Synthesis ---
+            await session.push(
+                SSEEventType.PROGRESS,
+                {
+                    "phase": "synthesis",
+                    "message": _get_progress_message("synthesis", proposal.language),
+                    "percent": 0,
+                },
+            )
+
+            all_sources: set[str] = set()
+            for node in nodes:
+                all_sources.update(node.get("sources", []))
+                if details := node.get("details"):
+                    all_sources.update(details.get("sources", []))
+            source_count = len(all_sources)
+
+            try:
+                synthesis = await run_synthesizer_agent(
+                    topic=proposal.topic,
+                    language=proposal.language,
+                    nodes=nodes,
+                )
+                synthesis_data = synthesis.model_dump()
+                synthesis_data["source_count"] = source_count
+                await session.push(SSEEventType.SYNTHESIS, synthesis_data)
+            except Exception:
+                logger.warning("Synthesizer failed, skipping synthesis")
 
             # --- Complete ---
             await session.push(

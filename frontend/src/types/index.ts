@@ -68,6 +68,14 @@ export interface NodeDetailEvent {
   details: NodeDetailData;
 }
 
+export interface SynthesisData {
+  summary: string;
+  key_insight: string;
+  timeline_span: string;
+  source_count: number;
+  verification_notes: string[];
+}
+
 export interface CompleteData {
   total_nodes: number;
   detail_completed: number;

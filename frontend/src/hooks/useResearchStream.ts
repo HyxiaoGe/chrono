@@ -5,6 +5,7 @@ import type {
   ProgressData,
   SkeletonNodeData,
   NodeDetailEvent,
+  SynthesisData,
   CompleteData,
 } from "@/types";
 
@@ -12,6 +13,7 @@ interface StreamCallbacks {
   onProgress?: (data: ProgressData) => void;
   onSkeleton?: (data: { nodes: SkeletonNodeData[] }) => void;
   onNodeDetail?: (data: NodeDetailEvent) => void;
+  onSynthesis?: (data: SynthesisData) => void;
   onComplete?: (data: CompleteData) => void;
   onResearchError?: (data: { error: string; message: string }) => void;
   onConnectionError?: () => void;
@@ -50,6 +52,9 @@ export function useResearchStream(
     );
     listen<NodeDetailEvent>("node_detail", (d) =>
       cbRef.current.onNodeDetail?.(d),
+    );
+    listen<SynthesisData>("synthesis", (d) =>
+      cbRef.current.onSynthesis?.(d),
     );
     listen<CompleteData>("complete", (d) => {
       cbRef.current.onComplete?.(d);

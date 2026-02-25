@@ -104,6 +104,17 @@ class NodeDetail(BaseModel):
     sources: list[str] = Field(default_factory=list)
 
 
+# --- Synthesis models ---
+
+
+class SynthesisResult(BaseModel):
+    summary: str
+    key_insight: str
+    timeline_span: str
+    source_count: int = 0
+    verification_notes: list[str] = Field(default_factory=list)
+
+
 # --- SSE event types ---
 
 
@@ -111,5 +122,6 @@ class SSEEventType(StrEnum):
     PROGRESS = "progress"
     SKELETON = "skeleton"
     NODE_DETAIL = "node_detail"
+    SYNTHESIS = "synthesis"
     COMPLETE = "complete"
     RESEARCH_ERROR = "research_error"
