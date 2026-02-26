@@ -1,6 +1,8 @@
 import asyncio
 import logging
+from datetime import date
 
+from pydantic import BaseModel
 from pydantic_ai import Agent
 from pydantic_ai.models.openrouter import OpenRouterModel
 
@@ -8,7 +10,14 @@ from app.agents.detail import run_detail_agent
 from app.agents.milestone import run_milestone_agent
 from app.agents.synthesizer import run_synthesizer_agent
 from app.config import settings
-from app.models.research import ResearchProposal, ResearchRequest, SSEEventType
+from app.models.research import (
+    ResearchProposal,
+    ResearchRequest,
+    ResearchThread,
+    Significance,
+    SkeletonNode,
+    SSEEventType,
+)
 from app.models.session import ResearchSession, SessionStatus
 from app.services.llm import provider
 from app.services.tavily import TavilyService
@@ -121,6 +130,142 @@ def _get_progress_message(phase: str, language: str) -> str:
     return messages.get(short, messages.get("en", "Processing..."))
 
 
+_SIG_RANK = {Significance.MEDIUM: 0, Significance.HIGH: 1, Significance.REVOLUTIONARY: 2}
+
+
+# --- LLM-based dedup ---
+
+
+class _DedupGroup(BaseModel):
+    indices: list[int]
+
+
+class _DedupResult(BaseModel):
+    duplicate_groups: list[_DedupGroup]
+
+
+_dedup_agent = Agent(
+    OpenRouterModel(settings.milestone_model, provider=provider),
+    output_type=_DedupResult,
+    instructions="""\
+You are a dedup specialist. Given a list of timeline events \
+(with index, date, title, description), \
+identify groups of events that refer to the SAME real-world event.
+
+Rules:
+- Two events are duplicates if they describe the same real-world occurrence, \
+even if titles are in different languages or worded differently
+- Date proximity matters: events more than 365 days apart are almost certainly NOT duplicates
+- Return only groups with 2+ items. Events with no duplicate should NOT appear in any group
+- Each event index should appear in at most one group
+- Output an empty duplicate_groups list if there are no duplicates""",
+    retries=1,
+)
+
+
+def _group_by_year(
+    nodes: list[SkeletonNode],
+) -> dict[str, list[tuple[int, SkeletonNode]]]:
+    groups: dict[str, list[tuple[int, SkeletonNode]]] = {}
+    for i, node in enumerate(nodes):
+        try:
+            year = str(date.fromisoformat(node.date).year)
+        except ValueError:
+            year = "unknown"
+        groups.setdefault(year, []).append((i, node))
+    return groups
+
+
+async def _dedup_year_group(
+    nodes_with_idx: list[tuple[int, SkeletonNode]],
+) -> list[list[int]]:
+    if len(nodes_with_idx) < 2:
+        return []
+
+    lines = []
+    for orig_idx, node in nodes_with_idx:
+        lines.append(f"[{orig_idx}] {node.date} | {node.title} | {node.description[:80]}")
+    prompt = "Find duplicate events:\n" + "\n".join(lines)
+
+    try:
+        result = await _dedup_agent.run(prompt)
+        return [g.indices for g in result.output.duplicate_groups]
+    except Exception:
+        logger.warning("Dedup agent failed for year group, skipping dedup")
+        return []
+
+
+def _pick_language_matching(nodes: list[SkeletonNode], language: str) -> SkeletonNode:
+    if language in ("zh", "ja", "ko"):
+        for node in nodes:
+            if any("\u4e00" <= ch <= "\u9fff" for ch in node.title):
+                return node
+    return max(nodes, key=lambda n: len(n.title))
+
+
+def _pick_precise_date(nodes: list[SkeletonNode]) -> str:
+    for node in nodes:
+        if not node.date.endswith("-01-01"):
+            return node.date
+    return nodes[0].date
+
+
+def _merge_duplicate_group(
+    nodes: list[SkeletonNode], indices: list[int], language: str
+) -> SkeletonNode:
+    group = [nodes[i] for i in indices]
+    best_title_node = _pick_language_matching(group, language)
+    best_sig = max(group, key=lambda n: _SIG_RANK.get(n.significance, 0)).significance
+    best_desc = max(group, key=lambda n: len(n.description)).description
+    all_sources = list({url for n in group for url in n.sources})
+    best_date = _pick_precise_date(group)
+    best_subtitle = max(group, key=lambda n: len(n.subtitle)).subtitle
+
+    return SkeletonNode(
+        date=best_date,
+        title=best_title_node.title,
+        subtitle=best_subtitle,
+        significance=best_sig,
+        description=best_desc,
+        sources=all_sources,
+    )
+
+
+async def _merge_and_dedup(nodes: list[SkeletonNode], language: str) -> list[SkeletonNode]:
+    sorted_nodes = sorted(nodes, key=lambda n: n.date)
+
+    year_groups = _group_by_year(sorted_nodes)
+
+    all_dup_groups: list[list[int]] = []
+    async with asyncio.TaskGroup() as tg:
+        tasks = [tg.create_task(_dedup_year_group(group)) for group in year_groups.values()]
+    for task in tasks:
+        all_dup_groups.extend(task.result())
+
+    merged_away: set[int] = set()
+    replacements: dict[int, SkeletonNode] = {}
+    for group_indices in all_dup_groups:
+        if len(group_indices) < 2:
+            continue
+        # winner_idx only determines position in the final list (first in group).
+        # Actual title/date/etc selection is handled by _merge_duplicate_group.
+        winner_idx = group_indices[0]
+        merged_node = _merge_duplicate_group(sorted_nodes, group_indices, language)
+        replacements[winner_idx] = merged_node
+        merged_away.update(group_indices[1:])
+
+    result: list[SkeletonNode] = []
+    for i, node in enumerate(sorted_nodes):
+        if i in merged_away:
+            continue
+        if i in replacements:
+            result.append(replacements[i])
+        else:
+            result.append(node)
+
+    return result
+
+
 class Orchestrator:
     def __init__(self, tavily: TavilyService) -> None:
         self.tavily = tavily
@@ -140,6 +285,45 @@ class Orchestrator:
             proposal = proposal.model_copy(update={"language": language})
         return proposal
 
+    async def _run_milestone_phase(self, proposal: ResearchProposal) -> list[dict]:
+        raw_nodes: list[SkeletonNode] = []
+
+        async def _run_thread(thread: ResearchThread) -> list[SkeletonNode]:
+            try:
+                milestone_result, urls = await run_milestone_agent(
+                    topic=proposal.topic,
+                    thread_name=thread.name,
+                    thread_description=thread.description,
+                    estimated_nodes=thread.estimated_nodes,
+                    language=proposal.language,
+                    tavily=self.tavily,
+                )
+                for node in milestone_result.nodes:
+                    node.sources = urls
+                return milestone_result.nodes
+            except Exception:
+                logger.warning("Milestone agent failed for thread: %s", thread.name)
+                return []
+
+        async with asyncio.TaskGroup() as tg:
+            tasks = [tg.create_task(_run_thread(thread)) for thread in proposal.research_threads]
+
+        for task in tasks:
+            raw_nodes.extend(task.result())
+
+        merged = await _merge_and_dedup(raw_nodes, proposal.language)
+
+        nodes: list[dict] = []
+        for i, node in enumerate(merged, start=1):
+            nodes.append(
+                {
+                    "id": f"ms_{i:03d}",
+                    **node.model_dump(),
+                    "status": "skeleton",
+                }
+            )
+        return nodes
+
     async def execute_research(self, session: ResearchSession) -> None:
         proposal = session.proposal
         try:
@@ -155,21 +339,7 @@ class Orchestrator:
                 },
             )
 
-            milestone_result = await run_milestone_agent(
-                topic=proposal.topic,
-                language=proposal.language,
-                tavily=self.tavily,
-            )
-
-            nodes = []
-            for i, node in enumerate(milestone_result.nodes, start=1):
-                nodes.append(
-                    {
-                        "id": f"ms_{i:03d}",
-                        **node.model_dump(),
-                        "status": "skeleton",
-                    }
-                )
+            nodes = await self._run_milestone_phase(proposal)
 
             await session.push(SSEEventType.SKELETON, {"nodes": nodes})
 
