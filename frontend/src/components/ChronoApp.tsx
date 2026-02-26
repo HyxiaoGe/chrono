@@ -39,7 +39,7 @@ export function ChronoApp() {
         const res = await fetch("/api/research", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ topic, language: navigator.language }),
+          body: JSON.stringify({ topic, language: "auto" }),
         });
         if (!res.ok) {
           setError("Service temporarily unavailable. Please try again.");
@@ -136,6 +136,7 @@ export function ChronoApp() {
           progressMessage={progressMessage}
           synthesisData={synthesisData}
           completeData={completeData}
+          proposal={proposal}
           language={language}
         />
       )}

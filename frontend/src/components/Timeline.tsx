@@ -1,6 +1,11 @@
 "use client";
 
-import type { TimelineNode, SynthesisData, CompleteData } from "@/types";
+import type {
+  TimelineNode,
+  SynthesisData,
+  CompleteData,
+  ResearchProposal,
+} from "@/types";
 import { TimelineNodeCard } from "./TimelineNode";
 
 interface Props {
@@ -8,6 +13,7 @@ interface Props {
   progressMessage: string;
   synthesisData: SynthesisData | null;
   completeData: CompleteData | null;
+  proposal: ResearchProposal | null;
   language: string;
 }
 
@@ -16,9 +22,24 @@ export function Timeline({
   progressMessage,
   synthesisData,
   completeData,
+  proposal,
   language,
 }: Props) {
   const isZh = language.startsWith("zh");
+
+  function handleExportJSON() {
+    const data = { proposal, nodes, synthesisData, completeData };
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: "application/json",
+    });
+    const topic = (proposal?.topic ?? "export").replace(/[^a-zA-Z0-9\u4e00-\u9fff-]/g, "_");
+    const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `chrono-${topic}-${ts}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12">
@@ -31,10 +52,18 @@ export function Timeline({
       )}
 
       {completeData && (
-        <div className="mb-8 text-center text-sm text-zinc-600">
-          {isZh
-            ? `调研完成 · ${completeData.total_nodes} 个节点 · ${completeData.detail_completed} 个已补充详情`
-            : `Research complete · ${completeData.total_nodes} nodes · ${completeData.detail_completed} enriched`}
+        <div className="mb-8 flex items-center justify-center gap-3 text-sm text-zinc-600">
+          <span>
+            {isZh
+              ? `调研完成 · ${completeData.total_nodes} 个节点 · ${completeData.detail_completed} 个已补充详情`
+              : `Research complete · ${completeData.total_nodes} nodes · ${completeData.detail_completed} enriched`}
+          </span>
+          <button
+            onClick={handleExportJSON}
+            className="rounded border border-zinc-700 px-2 py-0.5 text-xs text-zinc-500 transition-colors hover:border-zinc-500 hover:text-zinc-300"
+          >
+            Export JSON
+          </button>
         </div>
       )}
 
