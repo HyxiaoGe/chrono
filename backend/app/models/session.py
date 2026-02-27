@@ -1,5 +1,6 @@
 import asyncio
 import json
+import uuid
 from enum import StrEnum
 from typing import Any
 
@@ -23,6 +24,7 @@ class ResearchSession:
         self.status = SessionStatus.PROPOSAL_READY
         self.queue: asyncio.Queue[tuple[SSEEventType, dict[str, Any]] | None] = asyncio.Queue()
         self.task: asyncio.Task[None] | None = None
+        self.cached_research_id: uuid.UUID | None = None
 
     async def push(self, event_type: SSEEventType, data: dict[str, Any]) -> None:
         if self.status not in (SessionStatus.COMPLETED, SessionStatus.FAILED):

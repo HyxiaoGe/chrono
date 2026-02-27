@@ -10,6 +10,10 @@ class Settings(BaseSettings):
     doubao_api_key: str = ""
     qwen_api_key: str = ""
 
+    # --- Database / Redis ---
+    database_url: str = ""
+    redis_url: str = ""
+
     # --- 模型分配（前缀决定路由，无前缀默认走 OpenRouter）---
     orchestrator_model: str = "openrouter:anthropic/claude-opus-4.6"
     milestone_model: str = "openrouter:deepseek/deepseek-chat"

@@ -10,6 +10,8 @@ from app.agents.gap_analysis import run_gap_analysis_agent
 from app.agents.milestone import run_milestone_agent
 from app.agents.synthesizer import run_synthesizer_agent
 from app.config import settings
+from app.db.database import async_session_factory
+from app.db.repository import save_research
 from app.models.research import (
     GapAnalysisResult,
     HallucinationCheckResult,
@@ -490,6 +492,7 @@ class Orchestrator:
                         "id": f"ms_{next_id:03d}",
                         **gap_node.model_dump(),
                         "status": "skeleton",
+                        "is_gap_node": True,
                     }
                     next_id += 1
                     new_nodes.append(node_dict)
@@ -524,6 +527,7 @@ class Orchestrator:
                     all_sources.update(details.get("sources", []))
             source_count = len(all_sources)
 
+            synthesis_data: dict | None = None
             try:
                 synthesis = await run_synthesizer_agent(
                     topic=proposal.topic,
@@ -546,6 +550,22 @@ class Orchestrator:
                 },
             )
             session.status = SessionStatus.COMPLETED
+
+            # --- Save to DB ---
+            if async_session_factory is not None:
+                try:
+                    async with async_session_factory() as db:
+                        await save_research(
+                            db,
+                            proposal=proposal,
+                            nodes=nodes,
+                            synthesis_data=synthesis_data,
+                            total_nodes=total,
+                            source_count=source_count,
+                        )
+                    logger.info("Saved research to DB: %s", proposal.topic)
+                except Exception:
+                    logger.exception("Failed to save research to DB")
 
         except Exception:
             logger.exception("Research execution failed")
