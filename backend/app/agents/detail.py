@@ -1,17 +1,16 @@
 import logging
 
 from pydantic_ai import Agent, UsageLimits
-from pydantic_ai.models.openrouter import OpenRouterModel
 
 from app.config import settings
 from app.models.research import NodeDetail
-from app.services.llm import provider
+from app.services.llm import resolve_model
 from app.services.tavily import TavilyService
 
 logger = logging.getLogger(__name__)
 
 detail_agent = Agent(
-    OpenRouterModel(settings.detail_model, provider=provider),
+    resolve_model(settings.detail_model),
     output_type=NodeDetail,
     instructions="""\
 你是 Chrono 时间线调研系统的深度研究专家。你的任务是为时间线上的一个里程碑节点补充详细信息。

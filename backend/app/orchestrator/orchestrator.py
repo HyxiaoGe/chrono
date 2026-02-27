@@ -4,7 +4,6 @@ from datetime import date
 
 from pydantic import BaseModel
 from pydantic_ai import Agent
-from pydantic_ai.models.openrouter import OpenRouterModel
 
 from app.agents.detail import run_detail_agent
 from app.agents.gap_analysis import run_gap_analysis_agent
@@ -22,7 +21,7 @@ from app.models.research import (
     SSEEventType,
 )
 from app.models.session import ResearchSession, SessionStatus
-from app.services.llm import provider
+from app.services.llm import resolve_model
 from app.services.tavily import TavilyService
 
 logger = logging.getLogger(__name__)
@@ -51,7 +50,7 @@ _PROGRESS_MESSAGES: dict[str, dict[str, str]] = {
 }
 
 _proposal_agent = Agent(
-    OpenRouterModel(settings.orchestrator_model, provider=provider),
+    resolve_model(settings.orchestrator_model),
     output_type=ResearchProposal,
     instructions="""\
 你是 Chrono 调研系统的策略规划专家。给定一个 topic，你需要分析它并生成一份结构化的调研提案。
@@ -153,7 +152,7 @@ class _DedupResult(BaseModel):
 
 
 _dedup_agent = Agent(
-    OpenRouterModel(settings.milestone_model, provider=provider),
+    resolve_model(settings.dedup_model),
     output_type=_DedupResult,
     instructions="""\
 You are a dedup specialist. Given a list of timeline events \
@@ -277,7 +276,7 @@ async def _merge_and_dedup(nodes: list[SkeletonNode], language: str) -> list[Ske
 # --- Hallucination filter ---
 
 _hallucination_agent = Agent(
-    OpenRouterModel(settings.milestone_model, provider=provider),
+    resolve_model(settings.hallucination_model),
     output_type=HallucinationCheckResult,
     instructions="""\
 You are a fact-checking specialist. You will receive a list of recent \

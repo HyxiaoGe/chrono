@@ -4,7 +4,7 @@ version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi[standard]",
-    "pydantic-ai-slim[openrouter]",
+    "pydantic-ai-slim[openrouter,openai]",
     "sse-starlette",
     "tavily-python",
     "pydantic-settings",

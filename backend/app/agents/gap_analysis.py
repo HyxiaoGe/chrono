@@ -1,12 +1,11 @@
 from pydantic_ai import Agent
-from pydantic_ai.models.openrouter import OpenRouterModel
 
 from app.config import settings
 from app.models.research import GapAnalysisResult
-from app.services.llm import provider
+from app.services.llm import resolve_model
 
 gap_analysis_agent = Agent(
-    OpenRouterModel(settings.gap_analysis_model, provider=provider),
+    resolve_model(settings.gap_analysis_model),
     output_type=GapAnalysisResult,
     instructions="""\
 You are a timeline analysis specialist. You receive a complete timeline \

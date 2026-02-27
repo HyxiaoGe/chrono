@@ -2,14 +2,22 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
+    # --- API Keys ---
     openrouter_api_key: str
     tavily_api_key: str
+    deepseek_api_key: str = ""
+    moonshot_api_key: str = ""
+    doubao_api_key: str = ""
+    qwen_api_key: str = ""
 
-    orchestrator_model: str = "anthropic/claude-sonnet-4.5"
-    milestone_model: str = "deepseek/deepseek-chat"
-    detail_model: str = "deepseek/deepseek-chat"
-    synthesizer_model: str = "anthropic/claude-sonnet-4.5"
-    gap_analysis_model: str = "anthropic/claude-sonnet-4.5"
+    # --- 模型分配（前缀决定路由，无前缀默认走 OpenRouter）---
+    orchestrator_model: str = "openrouter:anthropic/claude-opus-4.6"
+    milestone_model: str = "openrouter:deepseek/deepseek-chat"
+    detail_model: str = "openrouter:deepseek/deepseek-chat"
+    dedup_model: str = "openrouter:deepseek/deepseek-chat"
+    hallucination_model: str = "openrouter:deepseek/deepseek-chat"
+    gap_analysis_model: str = "openrouter:anthropic/claude-opus-4.6"
+    synthesizer_model: str = "openrouter:anthropic/claude-opus-4.6"
 
     detail_concurrency: int = 4
 

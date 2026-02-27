@@ -2,17 +2,16 @@ import asyncio
 import logging
 
 from pydantic_ai import Agent, UsageLimits
-from pydantic_ai.models.openrouter import OpenRouterModel
 
 from app.config import settings
 from app.models.research import MilestoneResult
-from app.services.llm import provider
+from app.services.llm import resolve_model
 from app.services.tavily import TavilyService
 
 logger = logging.getLogger(__name__)
 
 milestone_agent = Agent(
-    OpenRouterModel(settings.milestone_model, provider=provider),
+    resolve_model(settings.milestone_model),
     output_type=MilestoneResult,
     instructions="""\
 You are a milestone research specialist for the Chrono timeline system.

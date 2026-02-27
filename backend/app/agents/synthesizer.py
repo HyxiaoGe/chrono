@@ -1,12 +1,11 @@
 from pydantic_ai import Agent
-from pydantic_ai.models.openrouter import OpenRouterModel
 
 from app.config import settings
 from app.models.research import SynthesisResult
-from app.services.llm import provider
+from app.services.llm import resolve_model
 
 synthesizer_agent = Agent(
-    OpenRouterModel(settings.synthesizer_model, provider=provider),
+    resolve_model(settings.synthesizer_model),
     output_type=SynthesisResult,
     instructions="""\
 You are the final reviewer of a Chrono timeline research. You receive a complete \
