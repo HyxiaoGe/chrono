@@ -7,10 +7,13 @@ from pydantic_ai import Agent
 from pydantic_ai.models.openrouter import OpenRouterModel
 
 from app.agents.detail import run_detail_agent
+from app.agents.gap_analysis import run_gap_analysis_agent
 from app.agents.milestone import run_milestone_agent
 from app.agents.synthesizer import run_synthesizer_agent
 from app.config import settings
 from app.models.research import (
+    GapAnalysisResult,
+    HallucinationCheckResult,
     ResearchProposal,
     ResearchRequest,
     ResearchThread,
@@ -34,6 +37,11 @@ _PROGRESS_MESSAGES: dict[str, dict[str, str]] = {
         "zh": "正在深度补充节点详情...",
         "en": "Enriching timeline details...",
         "ja": "タイムラインの詳細を補充中...",
+    },
+    "analysis": {
+        "zh": "正在分析时间线完整性...",
+        "en": "Analyzing timeline completeness...",
+        "ja": "タイムラインの完全性を分析中...",
     },
     "synthesis": {
         "zh": "正在生成调研总结...",
@@ -266,9 +274,36 @@ async def _merge_and_dedup(nodes: list[SkeletonNode], language: str) -> list[Ske
     return result
 
 
+# --- Hallucination filter ---
+
+_hallucination_agent = Agent(
+    OpenRouterModel(settings.milestone_model, provider=provider),
+    output_type=HallucinationCheckResult,
+    instructions="""\
+You are a fact-checking specialist. You will receive a list of recent \
+timeline events (from 2025 onward) along with their search reference materials.
+
+Your job: determine which events have NO evidence of actually having occurred \
+in the search references.
+
+Rules:
+- An event is VERIFIED if the search references contain reports of it \
+actually happening
+- An event is UNVERIFIED (should be removed) if:
+  - The search references only contain predictions, forecasts, or speculation
+  - The search references do not mention it at all
+  - The search references describe it as a future plan, not a completed event
+- When in doubt, keep the event (false negatives are better than false positives)
+- Return remove_ids as the list of node IDs to remove
+- Return reasons mapping each removed node ID to a brief explanation""",
+    retries=1,
+)
+
+
 class Orchestrator:
     def __init__(self, tavily: TavilyService) -> None:
         self.tavily = tavily
+        self._detail_contexts: dict[str, str] = {}
 
     async def create_proposal(self, request: ResearchRequest) -> ResearchProposal:
         language = _normalize_language(request.language)
@@ -324,6 +359,49 @@ class Orchestrator:
             )
         return nodes
 
+    async def _filter_hallucinations(self, nodes: list[dict]) -> list[dict]:
+        recent = [n for n in nodes if n["date"] >= "2025"]
+        if not recent:
+            return nodes
+
+        lines = []
+        for node in recent:
+            ctx = self._detail_contexts.get(node["id"], "No search results.")
+            lines.append(
+                f"--- Node {node['id']}: {node['title']} ({node['date']}) ---\n"
+                f"Description: {node['description']}\n"
+                f"Search references:\n{ctx}\n"
+            )
+        prompt = "Check these recent events:\n\n" + "\n".join(lines)
+
+        try:
+            result = await _hallucination_agent.run(prompt)
+            remove_ids = set(result.output.remove_ids)
+            if remove_ids:
+                for nid, reason in result.output.reasons.items():
+                    logger.info("Removing hallucinated node %s: %s", nid, reason)
+            return [n for n in nodes if n["id"] not in remove_ids]
+        except Exception:
+            logger.warning("Hallucination check failed, keeping all nodes")
+            return nodes
+        finally:
+            self._detail_contexts.clear()
+
+    async def _run_gap_analysis(
+        self,
+        nodes: list[dict],
+        proposal: ResearchProposal,
+    ) -> GapAnalysisResult:
+        try:
+            return await run_gap_analysis_agent(
+                topic=proposal.topic,
+                language=proposal.language,
+                nodes=nodes,
+            )
+        except Exception:
+            logger.warning("Gap analysis failed, skipping")
+            return GapAnalysisResult(gap_nodes=[], connections=[])
+
     async def execute_research(self, session: ResearchSession) -> None:
         proposal = session.proposal
         try:
@@ -361,7 +439,7 @@ class Orchestrator:
                 nonlocal detail_completed
                 async with sem:
                     try:
-                        detail = await run_detail_agent(
+                        detail, search_context = await run_detail_agent(
                             node=node,
                             topic=proposal.topic,
                             language=proposal.language,
@@ -372,6 +450,8 @@ class Orchestrator:
                         return
                 detail_completed += 1
                 node["details"] = detail.model_dump()
+                if node["date"] >= "2025":
+                    self._detail_contexts[node["id"]] = search_context
                 await session.push(
                     SSEEventType.NODE_DETAIL,
                     {
@@ -384,7 +464,51 @@ class Orchestrator:
                 for node in nodes:
                     tg.create_task(_enrich_node(node))
 
-            # --- Phase 3: Synthesis ---
+            # --- Phase 3: Gap Analysis ---
+            await session.push(
+                SSEEventType.PROGRESS,
+                {
+                    "phase": "analysis",
+                    "message": _get_progress_message("analysis", proposal.language),
+                    "percent": 0,
+                },
+            )
+
+            # Step 3a: Hallucination filter
+            nodes = await self._filter_hallucinations(nodes)
+
+            # Step 3b: Gap analysis + connections
+            gap_result = await self._run_gap_analysis(nodes, proposal)
+            gap_connections = gap_result.connections
+
+            # Step 3c: Integrate gap nodes + push updated skeleton
+            new_nodes: list[dict] = []
+            if gap_result.gap_nodes:
+                max_id = max(int(n["id"].split("_")[1]) for n in nodes)
+                next_id = max_id + 1
+                for gap_node in gap_result.gap_nodes:
+                    node_dict = {
+                        "id": f"ms_{next_id:03d}",
+                        **gap_node.model_dump(),
+                        "status": "skeleton",
+                    }
+                    next_id += 1
+                    new_nodes.append(node_dict)
+                nodes.extend(new_nodes)
+                nodes.sort(key=lambda n: n["date"])
+
+            # Always push updated skeleton (reflects filtered + gap nodes)
+            await session.push(SSEEventType.SKELETON, {"nodes": nodes})
+
+            # Enrich gap nodes
+            if new_nodes:
+                async with asyncio.TaskGroup() as tg:
+                    for node in new_nodes:
+                        tg.create_task(_enrich_node(node))
+
+            total = len(nodes)
+
+            # --- Phase 4: Synthesis ---
             await session.push(
                 SSEEventType.PROGRESS,
                 {
@@ -409,6 +533,7 @@ class Orchestrator:
                 )
                 synthesis_data = synthesis.model_dump()
                 synthesis_data["source_count"] = source_count
+                synthesis_data["connections"] = [c.model_dump() for c in gap_connections]
                 await session.push(SSEEventType.SYNTHESIS, synthesis_data)
             except Exception:
                 logger.warning("Synthesizer failed, skipping synthesis")

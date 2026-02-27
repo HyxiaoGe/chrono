@@ -68,12 +68,20 @@ export interface NodeDetailEvent {
   details: NodeDetailData;
 }
 
+export interface TimelineConnection {
+  from_id: string;
+  to_id: string;
+  relationship: string;
+  type: "caused" | "enabled" | "inspired" | "responded_to";
+}
+
 export interface SynthesisData {
   summary: string;
   key_insight: string;
   timeline_span: string;
   source_count: number;
   verification_notes: string[];
+  connections?: TimelineConnection[];
 }
 
 export interface CompleteData {

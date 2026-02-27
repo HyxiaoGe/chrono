@@ -1,4 +1,5 @@
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -104,6 +105,26 @@ class NodeDetail(BaseModel):
     sources: list[str] = Field(default_factory=list)
 
 
+# --- Phase 3: Gap Analysis models ---
+
+
+class TimelineConnection(BaseModel):
+    from_id: str
+    to_id: str
+    relationship: str
+    type: Literal["caused", "enabled", "inspired", "responded_to"]
+
+
+class GapAnalysisResult(BaseModel):
+    gap_nodes: list[SkeletonNode]
+    connections: list[TimelineConnection]
+
+
+class HallucinationCheckResult(BaseModel):
+    remove_ids: list[str]
+    reasons: dict[str, str]
+
+
 # --- Synthesis models ---
 
 
@@ -113,6 +134,7 @@ class SynthesisResult(BaseModel):
     timeline_span: str
     source_count: int = 0
     verification_notes: list[str] = Field(default_factory=list)
+    connections: list[TimelineConnection] = Field(default_factory=list)
 
 
 # --- SSE event types ---

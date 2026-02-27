@@ -80,9 +80,16 @@ export function ChronoApp() {
 
     onSkeleton: useCallback(
       ({ nodes: skeletonNodes }: { nodes: SkeletonNodeData[] }) => {
-        setNodes(
-          skeletonNodes.map((n) => ({ ...n, status: "skeleton" as const })),
-        );
+        setNodes((prev) => {
+          const existingMap = new Map(prev.map((n) => [n.id, n]));
+          return skeletonNodes.map((n) => {
+            const existing = existingMap.get(n.id);
+            if (existing?.details) {
+              return { ...n, status: existing.status, details: existing.details };
+            }
+            return { ...n, status: "skeleton" as const };
+          });
+        });
       },
       [],
     ),

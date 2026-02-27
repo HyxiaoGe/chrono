@@ -33,7 +33,8 @@ return an empty list.
 - Use the language specified in the input for all text fields
 - Do NOT invent new facts — only synthesize what is present in the nodes
 - The summary should feel like a professional research brief, not a list of events
-- source_count: set to 0 (will be overwritten by the system)""",
+- source_count: set to 0 (will be overwritten by the system)
+- connections: leave empty (will be filled by the system)""",
     retries=2,
 )
 

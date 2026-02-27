@@ -44,7 +44,8 @@ async def run_detail_agent(
     topic: str,
     language: str,
     tavily: TavilyService,
-) -> NodeDetail:
+) -> tuple[NodeDetail, str]:
+    """Returns (detail, search_context)."""
     query = f"{topic} {node['title']} {node['date'][:4]}"
     try:
         context, urls = await tavily.search_and_format(query)
@@ -67,4 +68,4 @@ async def run_detail_agent(
     )
     output = result.output
     output.sources = urls
-    return output
+    return output, context
