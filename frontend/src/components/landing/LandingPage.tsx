@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import type { Locale } from "@/data/landing";
-import { getLocale, persistLocale } from "@/data/landing";
-import { Navbar } from "./Navbar";
+import { getLocale, persistLocale, messages } from "@/data/landing";
+import { Navbar } from "@/components/Navbar";
 import { Hero } from "./Hero";
 import { HowItWorks } from "./HowItWorks";
 import { Features } from "./Features";
@@ -22,7 +22,12 @@ export function LandingPage() {
 
   return (
     <div className="min-h-screen bg-chrono-bg">
-      <Navbar locale={locale} onToggleLocale={toggleLocale} />
+      <Navbar
+        locale={locale}
+        onToggleLocale={toggleLocale}
+        showCTA
+        ctaText={messages[locale].nav.cta}
+      />
       <Hero locale={locale} />
       <HowItWorks locale={locale} />
       <Features locale={locale} />
