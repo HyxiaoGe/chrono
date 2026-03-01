@@ -7,9 +7,10 @@ import type {
   CompleteData,
   ResearchProposal,
 } from "@/types";
-import { useConnections } from "@/hooks/useConnections";
 import type { ConnectionMap } from "@/hooks/useConnections";
+import type { PhaseGroup } from "@/utils/timeline";
 import { TimelineNodeCard } from "./TimelineNode";
+import { ExportDropdown } from "./ExportDropdown";
 
 interface Props {
   nodes: TimelineNode[];
@@ -21,54 +22,11 @@ interface Props {
   selectedNodeId: string | null;
   highlightedNodeId: string | null;
   onSelectNode: (id: string) => void;
-}
-
-// --- Phase groups ---
-
-interface PhaseGroup {
-  name: string;
-  startIndex: number;
-  endIndex: number;
-  timeRange: string;
-}
-
-function computePhaseGroups(nodes: TimelineNode[]): PhaseGroup[] {
-  if (nodes.length === 0) return [];
-  if (!nodes.some((n) => n.phase_name)) return [];
-
-  const groups: PhaseGroup[] = [];
-  let currentPhase: string | null = null;
-  let startIndex = 0;
-
-  for (let i = 0; i < nodes.length; i++) {
-    const phase: string | null = nodes[i].phase_name ?? currentPhase;
-    if (phase && phase !== currentPhase) {
-      if (currentPhase !== null) {
-        groups.push(buildGroup(currentPhase, startIndex, i - 1, nodes));
-      }
-      currentPhase = phase;
-      startIndex = i;
-    } else if (!nodes[i].phase_name && currentPhase) {
-      // gap node without phase_name — stays in current phase
-    }
-  }
-  if (currentPhase !== null) {
-    groups.push(buildGroup(currentPhase, startIndex, nodes.length - 1, nodes));
-  }
-
-  return groups;
-}
-
-function buildGroup(
-  name: string,
-  start: number,
-  end: number,
-  nodes: TimelineNode[],
-): PhaseGroup {
-  const startYear = nodes[start].date.slice(0, 4);
-  const endYear = nodes[end].date.slice(0, 4);
-  const timeRange = startYear === endYear ? startYear : `${startYear} - ${endYear}`;
-  return { name, startIndex: start, endIndex: end, timeRange };
+  connectionMap: ConnectionMap;
+  phaseGroups: PhaseGroup[];
+  visibleNodeIds?: Set<string>;
+  matchedNodeIds?: Set<string>;
+  currentMatchId?: string | null;
 }
 
 // --- Year separators ---
@@ -205,9 +163,13 @@ export function Timeline({
   selectedNodeId,
   highlightedNodeId,
   onSelectNode,
+  connectionMap,
+  phaseGroups,
+  visibleNodeIds,
+  matchedNodeIds,
+  currentMatchId,
 }: Props) {
   const isZh = language.startsWith("zh");
-  const phaseGroups = computePhaseGroups(nodes);
   const separators = computeSeparators(nodes);
 
   const phaseStartSet = new Set(phaseGroups.map((g) => g.startIndex));
@@ -221,30 +183,13 @@ export function Timeline({
 
   const connections = synthesisData?.connections;
   const dateCorrections = synthesisData?.date_corrections;
-  const connectionMap: ConnectionMap = useConnections(connections, nodes);
-
-  function handleExportJSON() {
-    const data = { proposal, nodes, synthesisData, completeData };
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: "application/json",
-    });
-    const topic = (proposal?.topic ?? "export").replace(
-      /[^a-zA-Z0-9\u4e00-\u9fff-]/g,
-      "_",
-    );
-    const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `chrono-${topic}-${ts}.json`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  }
+  const hasSearch = matchedNodeIds && matchedNodeIds.size > 0;
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div id="chrono-timeline" className="mx-auto max-w-3xl px-4 py-8">
       {/* Progress bar */}
       {!completeData && progressMessage && (
-        <div className="mb-8">
+        <div className="mb-8" data-export-hide>
           <div className="h-0.5 w-full overflow-hidden rounded-full bg-chrono-border">
             <div className="h-full w-1/3 animate-indeterminate rounded-full bg-chrono-accent" />
           </div>
@@ -262,12 +207,15 @@ export function Timeline({
               ? `调研完成 · ${completeData.total_nodes} 个节点 · ${completeData.detail_completed} 个已补充详情`
               : `Research complete · ${completeData.total_nodes} nodes · ${completeData.detail_completed} enriched`}
           </span>
-          <button
-            onClick={handleExportJSON}
-            className="rounded border border-chrono-border px-2 py-0.5 text-chrono-tiny text-chrono-text-muted transition-colors hover:border-chrono-border-active hover:text-chrono-text-secondary"
-          >
-            Export JSON
-          </button>
+          <ExportDropdown
+            proposal={proposal}
+            nodes={nodes}
+            synthesisData={synthesisData}
+            completeData={completeData}
+            phaseGroups={phaseGroups}
+            timelineContainerId="chrono-timeline"
+            language={language}
+          />
         </div>
       )}
 
@@ -362,8 +310,23 @@ export function Timeline({
             ? connInfo.outgoing.length + connInfo.incoming.length
             : 0;
 
+          const isFilteredOut = visibleNodeIds && !visibleNodeIds.has(node.id);
+          const isSearchMatch = matchedNodeIds?.has(node.id) ?? false;
+          const isCurrentMatch = currentMatchId === node.id;
+          const dimForSearch = hasSearch && !isFilteredOut && !isSearchMatch;
+
           return (
-            <div key={node.id} id={node.id}>
+            <div
+              key={node.id}
+              id={node.id}
+              className={
+                isFilteredOut
+                  ? "opacity-25 pointer-events-none"
+                  : dimForSearch
+                    ? "opacity-40"
+                    : ""
+              }
+            >
               {/* Phase header */}
               {phaseGroup && (
                 <div
@@ -416,6 +379,8 @@ export function Timeline({
                     node={node}
                     isSelected={selectedNodeId === node.id}
                     isHighlighted={highlightedNodeId === node.id}
+                    isSearchMatch={isSearchMatch}
+                    isCurrentMatch={isCurrentMatch}
                     connectionCount={connCount}
                     onSelect={onSelectNode}
                     language={language}

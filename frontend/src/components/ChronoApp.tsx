@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useTransition, useRef } from "react";
+import { useState, useCallback, useTransition, useRef, useMemo, useEffect } from "react";
 import type {
   AppPhase,
   ResearchProposal,
@@ -10,14 +10,25 @@ import type {
   ProgressData,
   SkeletonNodeData,
   NodeDetailEvent,
+  FilterState,
 } from "@/types";
+import { createDefaultFilterState } from "@/types";
 import { useResearchStream } from "@/hooks/useResearchStream";
 import { useConnections } from "@/hooks/useConnections";
+import { useActiveNode } from "@/hooks/useActiveNode";
+import {
+  computePhaseGroups,
+  computeYearBounds,
+  isNodeFiltered,
+  isNodeSearchMatch,
+} from "@/utils/timeline";
 import { AppShell } from "./AppShell";
 import { SearchInput } from "./SearchInput";
 import { ProposalCard } from "./ProposalCard";
 import { Timeline } from "./Timeline";
 import { DetailPanel } from "./DetailPanel";
+import { MiniMap } from "./MiniMap";
+import { FilterBar } from "./FilterBar";
 
 export function ChronoApp() {
   const [phase, setPhase] = useState<AppPhase>("input");
@@ -143,10 +154,55 @@ export function ChronoApp() {
     }, []),
   });
 
+  // Filter + search
+  const [filterState, setFilterState] = useState<FilterState>(createDefaultFilterState);
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
+
   const language = proposal?.language ?? "en";
   const selectedNode =
     selectedNodeId ? (nodes.find((n) => n.id === selectedNodeId) ?? null) : null;
   const connectionMap = useConnections(synthesisData?.connections, nodes);
+  const phaseGroups = useMemo(() => computePhaseGroups(nodes), [nodes]);
+  const yearBounds = useMemo(() => computeYearBounds(nodes), [nodes]);
+
+  const nodeIds = useMemo(() => nodes.map((n) => n.id), [nodes]);
+  const activeNodeId = useActiveNode(nodeIds);
+
+  const visibleNodeIds = useMemo(
+    () => new Set(nodes.filter((n) => isNodeFiltered(n, filterState)).map((n) => n.id)),
+    [nodes, filterState],
+  );
+
+  const matchedNodeIds = useMemo(() => {
+    if (!filterState.searchQuery) return [];
+    return nodes
+      .filter((n) => visibleNodeIds.has(n.id) && isNodeSearchMatch(n, filterState.searchQuery))
+      .map((n) => n.id);
+  }, [nodes, visibleNodeIds, filterState.searchQuery]);
+
+  const matchedNodeIdSet = useMemo(() => new Set(matchedNodeIds), [matchedNodeIds]);
+  const currentMatchId = matchedNodeIds[currentMatchIndex] ?? null;
+
+  const handleFilterChange = useCallback((next: FilterState) => {
+    setFilterState(next);
+    setCurrentMatchIndex(0);
+  }, []);
+
+  const handlePrevMatch = useCallback(() => {
+    setCurrentMatchIndex((i) => (i > 0 ? i - 1 : matchedNodeIds.length - 1));
+  }, [matchedNodeIds.length]);
+
+  const handleNextMatch = useCallback(() => {
+    setCurrentMatchIndex((i) => (i < matchedNodeIds.length - 1 ? i + 1 : 0));
+  }, [matchedNodeIds.length]);
+
+  useEffect(() => {
+    if (currentMatchId) {
+      document
+        .getElementById(currentMatchId)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [currentMatchId]);
 
   return (
     <AppShell
@@ -169,6 +225,20 @@ export function ChronoApp() {
       )}
       {phase === "research" && (
         <>
+          {completeData && (
+            <FilterBar
+              filterState={filterState}
+              onFilterChange={handleFilterChange}
+              phaseGroups={phaseGroups}
+              yearBounds={yearBounds}
+              language={language}
+              matchCount={matchedNodeIds.length}
+              totalCount={visibleNodeIds.size}
+              currentMatchIndex={currentMatchIndex}
+              onPrevMatch={handlePrevMatch}
+              onNextMatch={handleNextMatch}
+            />
+          )}
           <Timeline
             nodes={nodes}
             progressMessage={progressMessage}
@@ -179,7 +249,21 @@ export function ChronoApp() {
             selectedNodeId={selectedNodeId}
             highlightedNodeId={highlightedNodeId}
             onSelectNode={setSelectedNodeId}
+            connectionMap={connectionMap}
+            phaseGroups={phaseGroups}
+            visibleNodeIds={visibleNodeIds}
+            matchedNodeIds={matchedNodeIdSet}
+            currentMatchId={currentMatchId}
           />
+          {nodes.length >= 15 && (
+            <MiniMap
+              nodes={nodes}
+              phaseGroups={phaseGroups}
+              activeNodeId={activeNodeId}
+              visibleNodeIds={visibleNodeIds}
+              onNavigateToNode={handleNavigateToNode}
+            />
+          )}
           <DetailPanel
             node={selectedNode}
             language={language}

@@ -98,3 +98,52 @@ body {
   color: var(--color-chrono-text);
   font-family: var(--font-sans), system-ui, sans-serif;
 }
+
+/* MiniMap hidden scrollbar */
+.minimap-scroll {
+  scrollbar-width: none;
+}
+.minimap-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Range slider for year filter */
+.chrono-range-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  pointer-events: none;
+}
+
+.chrono-range-slider::-webkit-slider-runnable-track {
+  height: 2px;
+  background: var(--color-chrono-border);
+}
+
+.chrono-range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-chrono-accent);
+  margin-top: -5px;
+  pointer-events: all;
+  cursor: pointer;
+}
+
+.chrono-range-slider::-moz-range-track {
+  height: 2px;
+  background: var(--color-chrono-border);
+  border: none;
+}
+
+.chrono-range-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-chrono-accent);
+  border: none;
+  pointer-events: all;
+  cursor: pointer;
+}

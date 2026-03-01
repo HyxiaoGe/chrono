@@ -6,6 +6,8 @@ interface Props {
   node: TimelineNode;
   isSelected: boolean;
   isHighlighted: boolean;
+  isSearchMatch: boolean;
+  isCurrentMatch: boolean;
   connectionCount: number;
   onSelect: (id: string) => void;
   language: string;
@@ -26,6 +28,8 @@ export function TimelineNodeCard({
   node,
   isSelected,
   isHighlighted,
+  isSearchMatch,
+  isCurrentMatch,
   connectionCount,
   onSelect,
   language,
@@ -36,6 +40,9 @@ export function TimelineNodeCard({
 
   const highlightClass = isHighlighted ? "animate-highlight" : "";
   const selectedClass = isSelected ? "ring-2 ring-chrono-accent/40" : "";
+  const currentMatchClass = isCurrentMatch
+    ? "ring-2 ring-chrono-accent/60"
+    : "";
 
   if (!isComplete) {
     return <SkeletonCard node={node} sig={sig} />;
@@ -50,9 +57,11 @@ export function TimelineNodeCard({
     ) : null;
 
   if (sig === "revolutionary") {
+    const searchClass =
+      isSearchMatch && !isCurrentMatch ? "ring-1 ring-chrono-accent/40" : "";
     return (
       <div
-        className={`animate-fade-in cursor-pointer rounded-xl border-l-4 border-chrono-revolutionary bg-chrono-surface p-6 shadow-lg shadow-chrono-revolutionary/5 transition-all ${selectedClass} ${highlightClass}`}
+        className={`animate-fade-in cursor-pointer rounded-xl border-l-4 border-chrono-revolutionary bg-chrono-surface p-6 shadow-lg shadow-chrono-revolutionary/5 transition-all ${selectedClass} ${highlightClass} ${currentMatchClass} ${searchClass}`}
         onClick={() => onSelect(node.id)}
       >
         <h3 className="text-chrono-subtitle font-semibold text-chrono-revolutionary">
@@ -71,10 +80,13 @@ export function TimelineNodeCard({
     );
   }
 
+  const searchBorder =
+    isSearchMatch && !isCurrentMatch ? "border-l-2 border-l-chrono-accent" : "";
+
   if (sig === "high") {
     return (
       <div
-        className={`animate-fade-in cursor-pointer rounded-xl border border-chrono-border bg-chrono-surface p-5 transition-all hover:border-chrono-border-active ${selectedClass} ${highlightClass}`}
+        className={`animate-fade-in cursor-pointer rounded-xl border border-chrono-border bg-chrono-surface p-5 transition-all hover:border-chrono-border-active ${selectedClass} ${highlightClass} ${currentMatchClass} ${searchBorder}`}
         onClick={() => onSelect(node.id)}
       >
         <h3 className="font-semibold text-chrono-text">{node.title}</h3>
@@ -88,7 +100,7 @@ export function TimelineNodeCard({
 
   return (
     <div
-      className={`animate-fade-in cursor-pointer rounded-lg border border-chrono-border bg-chrono-surface px-4 py-3 transition-all hover:border-chrono-border-active ${selectedClass} ${highlightClass}`}
+      className={`animate-fade-in cursor-pointer rounded-lg border border-chrono-border bg-chrono-surface px-4 py-3 transition-all hover:border-chrono-border-active ${selectedClass} ${highlightClass} ${currentMatchClass} ${searchBorder}`}
       onClick={() => onSelect(node.id)}
     >
       <h3 className="font-medium text-chrono-text">{node.title}</h3>
