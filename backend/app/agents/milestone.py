@@ -52,27 +52,43 @@ async def run_milestone_agent(
     estimated_nodes: int,
     language: str,
     tavily: TavilyService,
+    time_range: str = "",
 ) -> tuple[MilestoneResult, list[str]]:
-    query_main = f"{topic} {thread_name} milestones timeline history"
+    range_suffix = f" {time_range}" if time_range else ""
+    query_main = f"{topic} {thread_name} milestones timeline history{range_suffix}"
     query_recent = f"{topic} {thread_name} latest 2025 2026"
 
     try:
-        (ctx_main, urls_main), (ctx_recent, urls_recent) = await asyncio.gather(
-            tavily.search_and_format(query_main),
-            tavily.search_and_format(query_recent),
-        )
-        context = f"=== 历史资料 ===\n{ctx_main}\n\n=== 近期动态 ===\n{ctx_recent}"
-        all_urls = list(dict.fromkeys(urls_main + urls_recent))
+        coros = [tavily.search_and_format(query_main)]
+        if not time_range or time_range.split("-")[-1].strip() >= "2024":
+            coros.append(tavily.search_and_format(query_recent))
+        results = await asyncio.gather(*coros)
+        ctx_main, urls_main = results[0]
+        context = f"=== 历史资料 ===\n{ctx_main}"
+        all_urls = list(dict.fromkeys(urls_main))
+        if len(results) > 1:
+            ctx_recent, urls_recent = results[1]
+            context += f"\n\n=== 近期动态 ===\n{ctx_recent}"
+            all_urls = list(dict.fromkeys(urls_main + urls_recent))
     except Exception:
         logger.warning("Search failed for thread %s, proceeding without context", thread_name)
         context = "No search results available."
         all_urls = []
 
+    time_constraint = ""
+    if time_range:
+        time_constraint = (
+            f"\nTime range constraint: {time_range}\n"
+            f"IMPORTANT: Only include events within this time range. "
+            f"Do NOT include events outside {time_range}.\n"
+        )
+
     prompt = (
         f"Topic: {topic}\n"
         f"Research dimension: {thread_name}\n"
         f"Dimension description: {thread_description}\n"
-        f"Target node count: {estimated_nodes}\n\n"
+        f"Target node count: {estimated_nodes}\n"
+        f"{time_constraint}\n"
         f"搜索参考资料:\n{context}\n\n"
         f"CRITICAL: You MUST output ALL text fields (title, subtitle, description) "
         f"in {language}. Do NOT use any other language."

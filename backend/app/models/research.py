@@ -46,12 +46,20 @@ class UserFacingProposal(BaseModel):
     thread_names: list[str]
 
 
+class ResearchPhase(BaseModel):
+    name: str
+    time_range: str
+    description: str
+    threads: list[ResearchThread]
+
+
 class ResearchProposal(BaseModel):
     topic: str
     topic_type: TopicType
     language: str
     complexity: ComplexityAssessment
     research_threads: list[ResearchThread]
+    research_phases: list[ResearchPhase] = Field(default_factory=list)
     estimated_duration: DurationEstimate
     credits_cost: int
     user_facing: UserFacingProposal

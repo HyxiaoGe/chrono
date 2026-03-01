@@ -79,6 +79,7 @@ async def save_research(
             description=node["description"],
             details=node.get("details"),
             is_gap_node=node.get("is_gap_node", False),
+            phase_name=node.get("phase_name"),
             sort_order=i,
         )
         session.add(row)

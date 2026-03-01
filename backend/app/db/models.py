@@ -50,6 +50,7 @@ class TimelineNodeRow(Base):
     description: Mapped[str] = mapped_column(Text)
     details: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     is_gap_node: Mapped[bool] = mapped_column(Boolean, default=False)
+    phase_name: Mapped[str | None] = mapped_column(String(64), nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.now)
 
