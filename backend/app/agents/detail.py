@@ -46,7 +46,7 @@ detail_agent = Agent(
 - tags: 2-4 个英文分类标签，从以下选择：
   product_launch / hardware / software / business / policy / milestone /
   innovation / partnership / acquisition / regulation / cultural_shift /
-  scientific / military / diplomatic
+  scientific / military / diplomatic / security / technological_shift
 
 ## 约束
 
@@ -87,4 +87,7 @@ async def run_detail_agent(
     )
     output = result.output
     output.sources = urls
+    # Clean up malformed empty quotes from LLM (e.g. '""', "''")
+    if output.notable_quote and not output.notable_quote.strip("\"'  "):
+        output.notable_quote = ""
     return output, context

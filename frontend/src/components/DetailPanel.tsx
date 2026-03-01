@@ -30,6 +30,8 @@ const TAG_DISPLAY: Record<string, Record<string, string>> = {
   scientific: { en: "Scientific", zh: "科学" },
   military: { en: "Military", zh: "军事" },
   diplomatic: { en: "Diplomatic", zh: "外交" },
+  security: { en: "Security", zh: "安全" },
+  technological_shift: { en: "Tech Shift", zh: "技术变革" },
 };
 
 function label(key: string, language: string): string {
