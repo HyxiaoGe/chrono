@@ -1,5 +1,5 @@
-import { ChronoApp } from "@/components/ChronoApp";
+import { LandingPage } from "@/components/landing/LandingPage";
 
 export default function Page() {
-  return <ChronoApp />;
+  return <LandingPage />;
 }
