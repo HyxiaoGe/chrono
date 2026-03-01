@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { DemoPlayer } from "./DemoPlayer";
 import { HistoryList } from "./HistoryList";
 
 interface Props {
@@ -21,10 +20,7 @@ export function SearchInput({ onSearch, isPending, error, onSelectTopic }: Props
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center px-4 pt-12 sm:pt-16">
-      <div className="mb-12 w-full max-w-2xl">
-        <DemoPlayer />
-      </div>
+    <div className="flex min-h-screen flex-col items-center justify-center px-4">
       <h1 className="mb-2 text-chrono-hero font-bold tracking-wider text-chrono-accent">
         Chrono
       </h1>

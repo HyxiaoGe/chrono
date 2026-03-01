@@ -1,6 +1,6 @@
 "use client";
 
-import { useReducer, useEffect } from "react";
+import { useReducer, useEffect, useRef } from "react";
 import { demoData } from "@/data/demo";
 import { TimelineNodeCard } from "./TimelineNode";
 import type { TimelineNode } from "@/types";
@@ -24,26 +24,14 @@ interface DemoState {
   visibleNodes: number;
   completedNodes: number;
   showSynthesis: boolean;
-  scrollY: number;
+}
+
+interface Props {
+  onInterrupt: () => void;
 }
 
 const TOPIC = "iPhone";
 const NODE_COUNT = demoData.nodes.length;
-const VISIBLE_HEIGHT = 380;
-
-const NODE_HEIGHTS: Record<string, number> = {
-  revolutionary: 120,
-  high: 100,
-  medium: 70,
-};
-
-function computeScrollY(activeIndex: number): number {
-  let total = 0;
-  for (let i = 0; i <= activeIndex; i++) {
-    total += NODE_HEIGHTS[demoData.nodes[i].significance] ?? 90;
-  }
-  return Math.max(0, total - VISIBLE_HEIGHT + 80);
-}
 
 type Action =
   | { type: "TICK_CHAR" }
@@ -65,7 +53,6 @@ const initialState: DemoState = {
   visibleNodes: 0,
   completedNodes: 0,
   showSynthesis: false,
-  scrollY: 0,
 };
 
 function reducer(state: DemoState, action: Action): DemoState {
@@ -79,29 +66,15 @@ function reducer(state: DemoState, action: Action): DemoState {
     case "PROPOSAL_OUT":
       return { ...state, phase: "proposal-out" };
     case "START_SKELETON":
-      return { ...state, phase: "skeleton", scrollY: 0 };
-    case "ADD_NODE": {
-      const next = state.visibleNodes + 1;
-      return {
-        ...state,
-        visibleNodes: next,
-        scrollY: computeScrollY(next - 1),
-      };
-    }
+      return { ...state, phase: "skeleton" };
+    case "ADD_NODE":
+      return { ...state, visibleNodes: state.visibleNodes + 1 };
     case "START_DETAIL":
       return { ...state, phase: "detail" };
-    case "COMPLETE_NODE": {
-      const next = state.completedNodes + 1;
-      return {
-        ...state,
-        completedNodes: next,
-        scrollY: computeScrollY(next - 1),
-      };
-    }
-    case "SHOW_SYNTHESIS": {
-      const synthOffset = computeScrollY(NODE_COUNT - 1) + 120;
-      return { ...state, phase: "synthesis", showSynthesis: true, scrollY: synthOffset };
-    }
+    case "COMPLETE_NODE":
+      return { ...state, completedNodes: state.completedNodes + 1 };
+    case "SHOW_SYNTHESIS":
+      return { ...state, phase: "synthesis", showSynthesis: true };
     case "HOLD":
       return { ...state, phase: "hold" };
     case "FADEOUT":
@@ -115,48 +88,105 @@ function reducer(state: DemoState, action: Action): DemoState {
 
 // --- Sub-components ---
 
-function DemoSearch({ typedChars }: { typedChars: number }) {
+function DemoSearch({
+  typedChars,
+  onInterrupt,
+}: {
+  typedChars: number;
+  onInterrupt: () => void;
+}) {
   const text = TOPIC.slice(0, typedChars);
   return (
-    <div className="flex flex-col items-center justify-center h-[380px]">
-      <div className="text-2xl font-bold text-chrono-accent mb-2">Chrono</div>
-      <div className="text-chrono-tiny text-chrono-text-muted mb-6">
+    <div className="flex min-h-screen flex-col items-center justify-center px-4">
+      <h1 className="mb-2 text-chrono-hero font-bold tracking-wider text-chrono-accent">
+        Chrono
+      </h1>
+      <p className="mb-10 text-chrono-text-muted">
         Enter any topic. AI researches its timeline.
-      </div>
-      <div className="w-full max-w-xs">
-        <div className="rounded-lg border border-chrono-border bg-chrono-bg px-4 py-2.5 flex items-center">
-          <span className="text-chrono-body text-chrono-text">{text}</span>
+      </p>
+      <div className="flex w-full max-w-md gap-3">
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={onInterrupt}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") onInterrupt();
+          }}
+          className="flex-1 rounded-lg border border-chrono-border bg-chrono-surface px-4 py-3
+                     text-chrono-text cursor-text flex items-center"
+        >
+          <span>{text}</span>
           <span className="animate-cursor-blink text-chrono-accent ml-0.5">|</span>
+        </div>
+        <div className="rounded-lg bg-chrono-text px-6 py-3 font-medium text-chrono-bg opacity-40">
+          Research
         </div>
       </div>
     </div>
   );
 }
 
-function DemoProposal() {
+function DemoProposal({ onInterrupt }: { onInterrupt: () => void }) {
   const { proposal } = demoData;
+  const activeDots = 1;
   return (
-    <div className="flex items-center justify-center h-[380px]">
-      <div className="animate-slide-up w-full max-w-sm rounded-2xl border border-chrono-border bg-chrono-surface/80 p-6 backdrop-blur-sm">
-        <h3 className="text-chrono-title font-bold text-chrono-text">
-          {proposal.user_facing.title}
-        </h3>
-        <p className="mt-2 text-chrono-caption text-chrono-text-secondary">
+    <div className="flex min-h-screen flex-col items-center justify-center px-4">
+      <div className="animate-slide-up w-full max-w-lg rounded-2xl border border-chrono-border bg-chrono-surface/80 p-8 backdrop-blur-sm">
+        <div className="flex items-center gap-3">
+          <h2 className="text-chrono-title font-bold text-chrono-text">
+            {proposal.user_facing.title}
+          </h2>
+          <div className="flex gap-1">
+            {Array.from({ length: 4 }, (_, i) => (
+              <div
+                key={i}
+                className={`h-2 w-2 rounded-full ${
+                  i < activeDots ? "bg-chrono-accent" : "bg-chrono-border"
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+        <p className="mt-2 text-chrono-body text-chrono-text-secondary">
           {proposal.user_facing.summary}
         </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          {proposal.user_facing.thread_names.map((name) => (
-            <span
-              key={name}
-              className="rounded-full border border-chrono-border px-2.5 py-0.5 text-chrono-tiny text-chrono-text-secondary"
-            >
-              {name}
-            </span>
-          ))}
+        <div className="mt-6">
+          <h3 className="text-chrono-tiny font-medium uppercase tracking-wider text-chrono-text-muted">
+            Research Dimensions
+          </h3>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {proposal.research_threads.map((thread) => (
+              <span
+                key={thread.name}
+                className="rounded-full border border-chrono-border px-3 py-1 text-sm text-chrono-text-secondary"
+                style={{ opacity: 0.4 + thread.priority * 0.12 }}
+              >
+                {thread.name}
+              </span>
+            ))}
+          </div>
         </div>
-        <div className="mt-4 flex gap-4 text-chrono-tiny text-chrono-text-muted">
+        <div className="mt-6 flex gap-6 text-chrono-caption text-chrono-text-muted">
           <span>{proposal.user_facing.duration_text}</span>
-          <span>{proposal.complexity.estimated_total_nodes} nodes</span>
+          <span>{proposal.user_facing.credits_text}</span>
+          <span>~{proposal.complexity.estimated_total_nodes} nodes</span>
+        </div>
+        <div className="mt-8 flex gap-3">
+          <button
+            onClick={onInterrupt}
+            className="flex-1 rounded-lg bg-chrono-text py-3 font-medium text-chrono-bg
+                       hover:bg-chrono-text/90 transition-colors cursor-pointer"
+          >
+            Start Research
+          </button>
+          <button
+            onClick={onInterrupt}
+            className="rounded-lg border border-chrono-border px-6 py-3 text-chrono-text-muted
+                       hover:border-chrono-border-active hover:text-chrono-text-secondary
+                       transition-colors cursor-pointer"
+          >
+            Cancel
+          </button>
         </div>
       </div>
     </div>
@@ -201,7 +231,11 @@ function DemoTimeline({
               : "bg-chrono-medium";
 
         return (
-          <div key={node.id} className="mb-6 flex items-start animate-fade-in">
+          <div
+            key={node.id}
+            id={`demo-${node.id}`}
+            className="mb-6 flex items-start animate-fade-in"
+          >
             <div className="w-16 pt-2 text-right pr-2">
               <span className="text-chrono-tiny text-chrono-text-muted">
                 {node.date.slice(0, 4)}
@@ -230,7 +264,10 @@ function DemoTimeline({
 function DemoSynthesis() {
   const { synthesis } = demoData;
   return (
-    <div className="mt-8 animate-fade-in rounded-xl border border-chrono-border bg-chrono-surface p-5">
+    <div
+      id="demo-synthesis"
+      className="mt-8 animate-fade-in rounded-xl border border-chrono-border bg-chrono-surface p-5"
+    >
       <h4 className="text-chrono-caption font-medium text-chrono-text-muted uppercase tracking-wider mb-3">
         Synthesis
       </h4>
@@ -248,9 +285,11 @@ function DemoSynthesis() {
 
 // --- Main component ---
 
-export function DemoPlayer() {
+export function DemoPlayer({ onInterrupt }: Props) {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const containerRef = useRef<HTMLDivElement>(null);
 
+  // Timer orchestration
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
 
@@ -262,19 +301,15 @@ export function DemoPlayer() {
           timer = setTimeout(() => dispatch({ type: "TYPING_OUT" }), 600);
         }
         break;
-
       case "typing-out":
         timer = setTimeout(() => dispatch({ type: "SHOW_PROPOSAL" }), 350);
         break;
-
       case "proposal":
         timer = setTimeout(() => dispatch({ type: "PROPOSAL_OUT" }), 2500);
         break;
-
       case "proposal-out":
         timer = setTimeout(() => dispatch({ type: "START_SKELETON" }), 350);
         break;
-
       case "skeleton":
         if (state.visibleNodes < NODE_COUNT) {
           timer = setTimeout(() => dispatch({ type: "ADD_NODE" }), 300);
@@ -282,7 +317,6 @@ export function DemoPlayer() {
           timer = setTimeout(() => dispatch({ type: "START_DETAIL" }), 500);
         }
         break;
-
       case "detail":
         if (state.completedNodes < NODE_COUNT) {
           timer = setTimeout(() => dispatch({ type: "COMPLETE_NODE" }), 650);
@@ -290,15 +324,12 @@ export function DemoPlayer() {
           timer = setTimeout(() => dispatch({ type: "SHOW_SYNTHESIS" }), 500);
         }
         break;
-
       case "synthesis":
         timer = setTimeout(() => dispatch({ type: "HOLD" }), 2000);
         break;
-
       case "hold":
         timer = setTimeout(() => dispatch({ type: "FADEOUT" }), 2500);
         break;
-
       case "fadeout":
         timer = setTimeout(() => dispatch({ type: "RESET" }), 600);
         break;
@@ -307,68 +338,103 @@ export function DemoPlayer() {
     return () => clearTimeout(timer);
   }, [state]);
 
+  // Auto-scroll: skeleton phase
+  useEffect(() => {
+    if (state.phase === "skeleton" && state.visibleNodes > 0) {
+      const id = `demo-${demoData.nodes[state.visibleNodes - 1].id}`;
+      document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [state.phase, state.visibleNodes]);
+
+  // Auto-scroll: detail phase
+  useEffect(() => {
+    if (state.phase === "detail" && state.completedNodes > 0) {
+      const id = `demo-${demoData.nodes[state.completedNodes - 1].id}`;
+      document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [state.phase, state.completedNodes]);
+
+  // Auto-scroll: synthesis → top, reset → top
+  useEffect(() => {
+    if (state.phase === "synthesis") {
+      containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    }
+    if (state.phase === "typing") {
+      containerRef.current?.scrollTo({ top: 0 });
+    }
+  }, [state.phase]);
+
   const isFadeout = state.phase === "fadeout";
   const showTyping = state.phase === "typing" || state.phase === "typing-out";
   const showProposal = state.phase === "proposal" || state.phase === "proposal-out";
-  const showTimeline = state.visibleNodes > 0 && !showTyping && !showProposal;
-
-  const typingOpacity = state.phase === "typing" ? 1 : 0;
-  const proposalOpacity = state.phase === "proposal" ? 1 : 0;
+  const showTimeline = !showTyping && !showProposal;
 
   return (
     <div
-      className="w-full max-w-2xl mx-auto rounded-2xl border border-chrono-border bg-chrono-surface/50 overflow-hidden"
-      style={{ opacity: isFadeout ? 0 : 1, transition: "opacity 0.5s ease" }}
+      ref={containerRef}
+      className="fixed inset-0 z-10 bg-chrono-bg overflow-y-auto"
+      style={{
+        opacity: isFadeout ? 0 : 1,
+        transition: "opacity 0.5s ease",
+        scrollbarWidth: "none",
+      }}
     >
-      {/* Top bar */}
-      <div className="h-8 flex items-center px-3 border-b border-chrono-border/50">
-        <div className="flex gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-chrono-border" />
-          <span className="h-2.5 w-2.5 rounded-full bg-chrono-border" />
-          <span className="h-2.5 w-2.5 rounded-full bg-chrono-border" />
+      {/* Typing phase */}
+      {showTyping && (
+        <div
+          style={{
+            opacity: state.phase === "typing" ? 1 : 0,
+            transition: "opacity 0.3s ease",
+          }}
+        >
+          <DemoSearch typedChars={state.typedChars} onInterrupt={onInterrupt} />
         </div>
-        <span className="mx-auto text-chrono-tiny text-chrono-text-muted">Chrono</span>
-      </div>
+      )}
 
-      {/* Content area */}
-      <div className="relative h-[420px] overflow-hidden">
-        {/* Typing phase with fade transition */}
-        {showTyping && (
-          <div
-            className="absolute inset-0 p-6"
-            style={{ opacity: typingOpacity, transition: "opacity 0.3s ease" }}
-          >
-            <DemoSearch typedChars={state.typedChars} />
-          </div>
-        )}
+      {/* Proposal phase */}
+      {showProposal && (
+        <div
+          style={{
+            opacity: state.phase === "proposal" ? 1 : 0,
+            transition: "opacity 0.3s ease",
+          }}
+        >
+          <DemoProposal onInterrupt={onInterrupt} />
+        </div>
+      )}
 
-        {/* Proposal phase with fade transition */}
-        {showProposal && (
-          <div
-            className="absolute inset-0 p-6"
-            style={{ opacity: proposalOpacity, transition: "opacity 0.3s ease" }}
-          >
-            <DemoProposal />
-          </div>
-        )}
-
-        {/* Timeline + Synthesis (scrollable content) */}
-        {showTimeline && (
-          <div
-            className="p-6"
-            style={{
-              transform: `translateY(-${state.scrollY}px)`,
-              transition: "transform 0.6s ease-out",
-            }}
-          >
+      {/* Timeline phase */}
+      {showTimeline && (
+        <>
+          <header className="sticky top-0 z-40 flex h-12 items-center border-b border-chrono-border/50 bg-chrono-bg/80 px-6 backdrop-blur-md">
+            <span className="text-chrono-caption font-semibold tracking-wider text-chrono-text-muted">
+              Chrono
+            </span>
+            <span className="ml-4 text-chrono-caption text-chrono-text-secondary">
+              iPhone
+            </span>
+          </header>
+          <div className="mx-auto max-w-3xl px-4 py-8">
             <DemoTimeline
               visibleNodes={state.visibleNodes}
               completedNodes={state.completedNodes}
             />
             {state.showSynthesis && <DemoSynthesis />}
           </div>
-        )}
-      </div>
+        </>
+      )}
+
+      {/* Skip button (non-typing phases) */}
+      {!showTyping && !isFadeout && (
+        <button
+          onClick={onInterrupt}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 text-chrono-tiny
+                     text-chrono-text-muted hover:text-chrono-text-secondary
+                     transition-colors cursor-pointer"
+        >
+          Skip demo
+        </button>
+      )}
     </div>
   );
 }

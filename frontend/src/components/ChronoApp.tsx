@@ -16,6 +16,7 @@ import { useConnections } from "@/hooks/useConnections";
 import { useActiveNode } from "@/hooks/useActiveNode";
 import { computePhaseGroups } from "@/utils/timeline";
 import { AppShell } from "./AppShell";
+import { DemoPlayer } from "./DemoPlayer";
 import { SearchInput } from "./SearchInput";
 import { ProposalCard } from "./ProposalCard";
 import { Timeline } from "./Timeline";
@@ -45,6 +46,9 @@ export function ChronoApp() {
 
   // Detail panel
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+
+  // Demo overlay
+  const [demoActive, setDemoActive] = useState(true);
 
   // Highlight (connection navigation)
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
@@ -200,12 +204,24 @@ export function ChronoApp() {
       activePhase={activePhase}
     >
       {phase === "input" && (
-        <SearchInput
-          onSearch={handleSearch}
-          isPending={isPending}
-          error={error}
-          onSelectTopic={handleSearch}
-        />
+        <>
+          {demoActive && !autoTopic && (
+            <DemoPlayer
+              onInterrupt={() => {
+                setDemoActive(false);
+                requestAnimationFrame(() => {
+                  document.querySelector<HTMLInputElement>('input[type="text"]')?.focus();
+                });
+              }}
+            />
+          )}
+          <SearchInput
+            onSearch={handleSearch}
+            isPending={isPending}
+            error={error}
+            onSelectTopic={handleSearch}
+          />
+        </>
       )}
       {phase === "proposal" && proposal && (
         <ProposalCard
