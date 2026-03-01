@@ -25,8 +25,12 @@ import { DetailPanel } from "./DetailPanel";
 import { MiniMap } from "./MiniMap";
 
 export function ChronoApp() {
-  const [locale, setLocale] = useState<Locale>(getLocale);
+  const [locale, setLocale] = useState<Locale>("en");
   const [phase, setPhase] = useState<AppPhase>("input");
+
+  useEffect(() => {
+    setLocale(getLocale());
+  }, []);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 

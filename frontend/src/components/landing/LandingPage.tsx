@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Locale } from "@/data/landing";
 import { getLocale, persistLocale } from "@/data/landing";
 import { Navbar } from "@/components/Navbar";
@@ -10,7 +10,11 @@ import { Features } from "./Features";
 import { FooterCTA } from "./FooterCTA";
 
 export function LandingPage() {
-  const [locale, setLocale] = useState<Locale>(getLocale);
+  const [locale, setLocale] = useState<Locale>("en");
+
+  useEffect(() => {
+    setLocale(getLocale());
+  }, []);
 
   function toggleLocale() {
     setLocale((l) => {
