@@ -748,6 +748,22 @@ class Orchestrator:
                 synthesis_data["source_count"] = source_count
                 synthesis_data["connections"] = [c.model_dump() for c in gap_connections]
                 await session.push(SSEEventType.SYNTHESIS, synthesis_data)
+
+                # Apply date corrections
+                if synthesis.date_corrections:
+                    node_map = {n["id"]: n for n in nodes}
+                    for corr in synthesis.date_corrections:
+                        if corr.node_id in node_map:
+                            node_map[corr.node_id]["date"] = corr.corrected_date
+                            logger.info(
+                                "Date corrected %s: %s → %s (%s)",
+                                corr.node_id,
+                                corr.original_date,
+                                corr.corrected_date,
+                                corr.reason,
+                            )
+                    nodes.sort(key=lambda n: n["date"])
+                    await session.push(SSEEventType.SKELETON, {"nodes": nodes})
             except Exception:
                 logger.warning("Synthesizer failed, skipping synthesis")
 

@@ -24,8 +24,14 @@ or non-obvious connection you spotted across the entire timeline.
 "1939 – 1945 (6 years)".
 
 4. **Cross-Validation**: Check for inconsistencies between nodes — contradictory dates, \
-conflicting claims, or suspicious gaps. List any issues found. If everything checks out, \
-return an empty list.
+conflicting claims, or suspicious gaps. List any issues found in verification_notes. \
+If everything checks out, return an empty list.
+
+5. **Date Verification**: Compare each node's date field against its description \
+and details. If the date is clearly wrong (off by months or years), output a \
+date_corrections entry with node_id (e.g. "ms_035"), original_date, corrected_date, \
+and reason. Only flag dates you are confident are wrong — do not guess. \
+Output an empty list if all dates are correct.
 
 ## Constraints
 
@@ -47,7 +53,8 @@ def _build_synthesis_prompt(topic: str, language: str, nodes: list[dict]) -> str
     ]
 
     for i, node in enumerate(nodes, start=1):
-        parts.append(f"### Node {i}: {node.get('title', '')} ({node.get('date', '')})")
+        node_id = node.get("id", f"ms_{i:03d}")
+        parts.append(f"### Node {i} [{node_id}]: {node.get('title', '')} ({node.get('date', '')})")
         parts.append(f"- Significance: {node.get('significance', '')}")
         parts.append(f"- Description: {node.get('description', '')}")
 

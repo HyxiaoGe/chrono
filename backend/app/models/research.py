@@ -136,6 +136,13 @@ class HallucinationCheckResult(BaseModel):
 # --- Synthesis models ---
 
 
+class DateCorrection(BaseModel):
+    node_id: str
+    original_date: str
+    corrected_date: str
+    reason: str
+
+
 class SynthesisResult(BaseModel):
     summary: str
     key_insight: str
@@ -143,6 +150,7 @@ class SynthesisResult(BaseModel):
     source_count: int = 0
     verification_notes: list[str] = Field(default_factory=list)
     connections: list[TimelineConnection] = Field(default_factory=list)
+    date_corrections: list[DateCorrection] = Field(default_factory=list)
 
 
 # --- SSE event types ---
