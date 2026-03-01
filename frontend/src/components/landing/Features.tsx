@@ -28,47 +28,51 @@ function DepthLevels() {
 }
 
 function ConnectionsDiagram() {
+  // Cards are 44px tall (py-2 + 2 lines), gap-4 = 16px between them.
+  // Card centers: A=22, B=22+44+16=82, C=82+44+16=142. Total height ~186px.
+  // SVG coordinates match the p-6 (24px) padded container.
   return (
     <div className="relative p-6 rounded-xl border border-chrono-border bg-chrono-surface/50">
       <svg
-        className="absolute inset-0 w-full h-full pointer-events-none"
-        viewBox="0 0 300 200"
-        preserveAspectRatio="xMidYMid meet"
+        className="absolute inset-0 w-full h-full pointer-events-none overflow-visible"
+        style={{ left: 0, top: 0 }}
       >
+        {/* A→B: caused */}
         <path
-          d="M 40 45 C 80 45, 80 100, 40 100"
+          d="M 32 46 C 60 46, 60 106, 32 106"
           stroke="var(--color-chrono-caused)"
           strokeWidth="1.5"
           fill="none"
           strokeDasharray="4 3"
         />
         <text
-          x="85"
-          y="75"
+          x="64"
+          y="79"
           fill="var(--color-chrono-caused)"
-          fontSize="9"
+          fontSize="10"
           fontFamily="inherit"
         >
           caused
         </text>
+        {/* A→C: inspired */}
         <path
-          d="M 40 45 C 80 45, 80 155, 40 155"
+          d="M 32 46 C 72 46, 72 166, 32 166"
           stroke="var(--color-chrono-inspired)"
           strokeWidth="1.5"
           fill="none"
           strokeDasharray="4 3"
         />
         <text
-          x="85"
-          y="130"
+          x="76"
+          y="118"
           fill="var(--color-chrono-inspired)"
-          fontSize="9"
+          fontSize="10"
           fontFamily="inherit"
         >
           inspired
         </text>
       </svg>
-      <div className="relative space-y-6">
+      <div className="relative flex flex-col gap-4">
         <div className="rounded-lg border-l-2 border-chrono-revolutionary bg-chrono-bg/50 px-4 py-2">
           <div className="text-chrono-caption font-medium text-chrono-text">
             Event A

@@ -41,7 +41,7 @@ const NODE_HEIGHTS: Record<string, number> = {
   high: 100,
   medium: 70,
 };
-const VISIBLE_HEIGHT = 460;
+const VISIBLE_HEIGHT = 340;
 
 type Action =
   | { type: "TICK_CHAR" }
@@ -138,7 +138,7 @@ function DemoSearch({
 }) {
   const text = TOPIC.slice(0, typedChars);
   return (
-    <div className="flex h-[460px] flex-col items-center justify-center px-4">
+    <div className="flex h-[340px] flex-col items-center justify-end pb-16 px-4">
       <h1 className="mb-2 text-chrono-title font-bold tracking-wider text-chrono-accent">
         Chrono
       </h1>
@@ -164,7 +164,7 @@ function DemoProposal({ data, locale }: { data: DemoData; locale: Locale }) {
   const { proposal } = data;
   const activeDots = 1;
   return (
-    <div className="flex h-[460px] flex-col items-center justify-center px-4">
+    <div className="flex h-[340px] flex-col items-center justify-end pb-12 px-4">
       <div className="animate-slide-up w-full max-w-sm rounded-xl border border-chrono-border bg-chrono-surface/80 p-5 backdrop-blur-sm">
         <div className="flex items-center gap-2">
           <h2 className="text-chrono-body font-bold text-chrono-text">
@@ -404,7 +404,7 @@ export function DemoPlayer({ locale }: Props) {
       </div>
 
       {/* Content area */}
-      <div className="relative h-[500px] overflow-hidden">
+      <div className="relative h-[380px] overflow-hidden">
         {/* Typing phase */}
         {showTyping && (
           <div
@@ -443,7 +443,7 @@ export function DemoPlayer({ locale }: Props) {
                 iPhone
               </span>
             </div>
-            <div className="h-[460px] overflow-hidden">
+            <div className="h-[340px] overflow-hidden">
               <DemoTimeline
                 data={data}
                 visibleNodes={state.visibleNodes}
