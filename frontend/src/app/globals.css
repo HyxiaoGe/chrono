@@ -1,20 +1,20 @@
 @import "tailwindcss";
 
 @theme inline {
-  /* --- Colors --- */
-  --color-chrono-bg: #06060a;
-  --color-chrono-surface: #0f0f14;
-  --color-chrono-surface-hover: #16161d;
-  --color-chrono-border: #1e1e28;
-  --color-chrono-border-active: #2e2e3a;
-  --color-chrono-text: #e8e8ed;
-  --color-chrono-text-secondary: #9898a6;
-  --color-chrono-text-muted: #5c5c6a;
+  /* --- Colors (Tailwind zinc scale) --- */
+  --color-chrono-bg: #09090b;              /* zinc-950 */
+  --color-chrono-surface: #18181b;         /* zinc-900 */
+  --color-chrono-surface-hover: #27272a;   /* zinc-800 */
+  --color-chrono-border: #3f3f46;          /* zinc-700 */
+  --color-chrono-border-active: #52525b;   /* zinc-600 */
+  --color-chrono-text: #fafafa;            /* zinc-50 */
+  --color-chrono-text-secondary: #a1a1aa;  /* zinc-400 */
+  --color-chrono-text-muted: #71717a;      /* zinc-500 */
   --color-chrono-accent: #d4a050;
   --color-chrono-revolutionary: #f0c060;
   --color-chrono-high: #8a9ab0;
-  --color-chrono-medium: #5c6470;
-  --color-chrono-timeline: #1e1e28;
+  --color-chrono-medium: #71717a;          /* zinc-500 */
+  --color-chrono-timeline: #3f3f46;        /* = border, zinc-700 */
   --color-chrono-caused: #e07050;
   --color-chrono-enabled: #5090d0;
   --color-chrono-inspired: #50b080;
@@ -97,53 +97,4 @@ body {
   background: var(--color-chrono-bg);
   color: var(--color-chrono-text);
   font-family: var(--font-sans), system-ui, sans-serif;
-}
-
-/* MiniMap hidden scrollbar */
-.minimap-scroll {
-  scrollbar-width: none;
-}
-.minimap-scroll::-webkit-scrollbar {
-  display: none;
-}
-
-/* Range slider for year filter */
-.chrono-range-slider {
-  -webkit-appearance: none;
-  appearance: none;
-  background: transparent;
-  pointer-events: none;
-}
-
-.chrono-range-slider::-webkit-slider-runnable-track {
-  height: 2px;
-  background: var(--color-chrono-border);
-}
-
-.chrono-range-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--color-chrono-accent);
-  margin-top: -5px;
-  pointer-events: all;
-  cursor: pointer;
-}
-
-.chrono-range-slider::-moz-range-track {
-  height: 2px;
-  background: var(--color-chrono-border);
-  border: none;
-}
-
-.chrono-range-slider::-moz-range-thumb {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--color-chrono-accent);
-  border: none;
-  pointer-events: all;
-  cursor: pointer;
 }

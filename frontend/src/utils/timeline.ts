@@ -1,4 +1,4 @@
-import type { TimelineNode, FilterState } from "@/types";
+import type { TimelineNode } from "@/types";
 
 export interface PhaseGroup {
   name: string;
@@ -44,6 +44,49 @@ export function computePhaseGroups(nodes: TimelineNode[]): PhaseGroup[] {
   return groups;
 }
 
+export interface DenseGroup {
+  startIndex: number;
+  endIndex: number;
+  nodeIds: string[];
+}
+
+export function computeDenseGroups(nodes: TimelineNode[]): DenseGroup[] {
+  const groups: DenseGroup[] = [];
+  let runStart = -1;
+
+  function flushRun(end: number) {
+    if (runStart >= 0 && end - runStart >= 3) {
+      groups.push({
+        startIndex: runStart,
+        endIndex: end,
+        nodeIds: nodes.slice(runStart, end + 1).map((n) => n.id),
+      });
+    }
+    runStart = -1;
+  }
+
+  for (let i = 0; i < nodes.length; i++) {
+    const n = nodes[i];
+    if (n.significance === "revolutionary") {
+      flushRun(i - 1);
+      continue;
+    }
+    // Phase boundary breaks the run
+    if (
+      runStart >= 0 &&
+      n.phase_name &&
+      nodes[i - 1].phase_name &&
+      n.phase_name !== nodes[i - 1].phase_name
+    ) {
+      flushRun(i - 1);
+    }
+    if (runStart < 0) runStart = i;
+  }
+  flushRun(nodes.length - 1);
+
+  return groups;
+}
+
 export function computeYearBounds(nodes: TimelineNode[]): [number, number] | null {
   if (nodes.length === 0) return null;
   let min = Infinity;
@@ -58,31 +101,4 @@ export function computeYearBounds(nodes: TimelineNode[]): [number, number] | nul
   if (min === Infinity) return null;
   if (max - min < 2) return null;
   return [min, max];
-}
-
-export function isNodeFiltered(node: TimelineNode, filter: FilterState): boolean {
-  if (!filter.significance.has(node.significance)) return false;
-
-  if (filter.phase !== null && node.phase_name && node.phase_name !== filter.phase) {
-    return false;
-  }
-
-  if (filter.yearRange) {
-    const y = parseInt(node.date.slice(0, 4), 10);
-    if (!isNaN(y) && (y < filter.yearRange[0] || y > filter.yearRange[1])) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-export function isNodeSearchMatch(node: TimelineNode, query: string): boolean {
-  if (!query) return false;
-  const q = query.toLowerCase();
-  return (
-    node.title.toLowerCase().includes(q) ||
-    node.description.toLowerCase().includes(q) ||
-    (node.subtitle?.toLowerCase().includes(q) ?? false)
-  );
 }

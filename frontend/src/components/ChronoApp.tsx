@@ -10,30 +10,27 @@ import type {
   ProgressData,
   SkeletonNodeData,
   NodeDetailEvent,
-  FilterState,
 } from "@/types";
-import { createDefaultFilterState } from "@/types";
 import { useResearchStream } from "@/hooks/useResearchStream";
 import { useConnections } from "@/hooks/useConnections";
 import { useActiveNode } from "@/hooks/useActiveNode";
-import {
-  computePhaseGroups,
-  computeYearBounds,
-  isNodeFiltered,
-  isNodeSearchMatch,
-} from "@/utils/timeline";
+import { computePhaseGroups } from "@/utils/timeline";
 import { AppShell } from "./AppShell";
 import { SearchInput } from "./SearchInput";
 import { ProposalCard } from "./ProposalCard";
 import { Timeline } from "./Timeline";
 import { DetailPanel } from "./DetailPanel";
 import { MiniMap } from "./MiniMap";
-import { FilterBar } from "./FilterBar";
 
 export function ChronoApp() {
   const [phase, setPhase] = useState<AppPhase>("input");
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
+  const [autoTopic] = useState(() => {
+    if (typeof window === "undefined") return null;
+    return new URLSearchParams(window.location.search).get("topic");
+  });
 
   // Proposal phase
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -77,15 +74,43 @@ export function ChronoApp() {
   }
 
   function handleConfirm() {
+    if (proposal) {
+      window.history.replaceState(null, "", `?topic=${encodeURIComponent(proposal.topic)}`);
+    }
     setPhase("research");
     setStreamSessionId(sessionId);
   }
 
   function handleCancel() {
+    window.history.replaceState(null, "", "/");
     setPhase("input");
     setSessionId(null);
     setProposal(null);
   }
+
+  const didAutoSearch = useRef(false);
+  useEffect(() => {
+    if (!autoTopic || didAutoSearch.current) return;
+    didAutoSearch.current = true;
+
+    fetch("/api/research", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ topic: autoTopic, language: "auto" }),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error();
+        return res.json();
+      })
+      .then((data) => {
+        setSessionId(data.session_id);
+        setProposal(data.proposal);
+        setPhase("proposal");
+      })
+      .catch(() => {
+        setError("Service temporarily unavailable. Please try again.");
+      });
+  }, [autoTopic]);
 
   const handleNavigateToNode = useCallback((targetId: string) => {
     setSelectedNodeId(null);
@@ -154,66 +179,32 @@ export function ChronoApp() {
     }, []),
   });
 
-  // Filter + search
-  const [filterState, setFilterState] = useState<FilterState>(createDefaultFilterState);
-  const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
-
   const language = proposal?.language ?? "en";
   const selectedNode =
     selectedNodeId ? (nodes.find((n) => n.id === selectedNodeId) ?? null) : null;
   const connectionMap = useConnections(synthesisData?.connections, nodes);
   const phaseGroups = useMemo(() => computePhaseGroups(nodes), [nodes]);
-  const yearBounds = useMemo(() => computeYearBounds(nodes), [nodes]);
 
   const nodeIds = useMemo(() => nodes.map((n) => n.id), [nodes]);
   const activeNodeId = useActiveNode(nodeIds);
 
-  const visibleNodeIds = useMemo(
-    () => new Set(nodes.filter((n) => isNodeFiltered(n, filterState)).map((n) => n.id)),
-    [nodes, filterState],
-  );
-
-  const matchedNodeIds = useMemo(() => {
-    if (!filterState.searchQuery) return [];
-    return nodes
-      .filter((n) => visibleNodeIds.has(n.id) && isNodeSearchMatch(n, filterState.searchQuery))
-      .map((n) => n.id);
-  }, [nodes, visibleNodeIds, filterState.searchQuery]);
-
-  const matchedNodeIdSet = useMemo(() => new Set(matchedNodeIds), [matchedNodeIds]);
-  const currentMatchId = matchedNodeIds[currentMatchIndex] ?? null;
-
-  const handleFilterChange = useCallback((next: FilterState) => {
-    setFilterState(next);
-    setCurrentMatchIndex(0);
-  }, []);
-
-  const handlePrevMatch = useCallback(() => {
-    setCurrentMatchIndex((i) => (i > 0 ? i - 1 : matchedNodeIds.length - 1));
-  }, [matchedNodeIds.length]);
-
-  const handleNextMatch = useCallback(() => {
-    setCurrentMatchIndex((i) => (i < matchedNodeIds.length - 1 ? i + 1 : 0));
-  }, [matchedNodeIds.length]);
-
-  useEffect(() => {
-    if (currentMatchId) {
-      document
-        .getElementById(currentMatchId)
-        ?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-  }, [currentMatchId]);
+  const activeNode = activeNodeId ? nodes.find((n) => n.id === activeNodeId) : null;
+  const activeYear = activeNode ? activeNode.date.slice(0, 4) : null;
+  const activePhase = activeNode?.phase_name ?? null;
 
   return (
     <AppShell
       topic={phase !== "input" ? proposal?.topic : undefined}
       showTopBar={phase !== "input"}
+      activeYear={activeYear}
+      activePhase={activePhase}
     >
       {phase === "input" && (
         <SearchInput
           onSearch={handleSearch}
           isPending={isPending}
           error={error}
+          onSelectTopic={handleSearch}
         />
       )}
       {phase === "proposal" && proposal && (
@@ -225,20 +216,6 @@ export function ChronoApp() {
       )}
       {phase === "research" && (
         <>
-          {completeData && (
-            <FilterBar
-              filterState={filterState}
-              onFilterChange={handleFilterChange}
-              phaseGroups={phaseGroups}
-              yearBounds={yearBounds}
-              language={language}
-              matchCount={matchedNodeIds.length}
-              totalCount={visibleNodeIds.size}
-              currentMatchIndex={currentMatchIndex}
-              onPrevMatch={handlePrevMatch}
-              onNextMatch={handleNextMatch}
-            />
-          )}
           <Timeline
             nodes={nodes}
             progressMessage={progressMessage}
@@ -251,16 +228,11 @@ export function ChronoApp() {
             onSelectNode={setSelectedNodeId}
             connectionMap={connectionMap}
             phaseGroups={phaseGroups}
-            visibleNodeIds={visibleNodeIds}
-            matchedNodeIds={matchedNodeIdSet}
-            currentMatchId={currentMatchId}
           />
           {nodes.length >= 15 && (
             <MiniMap
               nodes={nodes}
-              phaseGroups={phaseGroups}
               activeNodeId={activeNodeId}
-              visibleNodeIds={visibleNodeIds}
               onNavigateToNode={handleNavigateToNode}
             />
           )}

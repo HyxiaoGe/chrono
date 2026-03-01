@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { HistoryList } from "./HistoryList";
 
 interface Props {
   onSearch: (topic: string) => void;
   isPending: boolean;
   error: string | null;
+  onSelectTopic: (topic: string) => void;
 }
 
-export function SearchInput({ onSearch, isPending, error }: Props) {
+export function SearchInput({ onSearch, isPending, error, onSelectTopic }: Props) {
   const [topic, setTopic] = useState("");
 
   function handleSubmit(e: React.FormEvent) {
@@ -48,6 +50,7 @@ export function SearchInput({ onSearch, isPending, error }: Props) {
         </button>
       </form>
       {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
+      <HistoryList onSelectTopic={onSelectTopic} />
     </div>
   );
 }

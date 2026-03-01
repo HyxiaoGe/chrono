@@ -8,7 +8,7 @@ from sse_starlette import EventSourceResponse
 
 from app.db.database import async_session_factory, engine
 from app.db.replay import replay_research
-from app.db.repository import get_research_by_topic
+from app.db.repository import get_research_by_topic, list_researches
 from app.models.research import (
     ErrorResponse,
     ResearchProposalResponse,
@@ -33,6 +33,27 @@ app = FastAPI(title="Chrono API", lifespan=lifespan)
 tavily_service = TavilyService()
 session_manager = SessionManager()
 orchestrator = Orchestrator(tavily=tavily_service)
+
+
+@app.get("/api/researches")
+async def list_researches_endpoint():
+    if async_session_factory is None:
+        return []
+    async with async_session_factory() as db:
+        rows = await list_researches(db)
+    return [
+        {
+            "id": str(row.id),
+            "topic": row.topic,
+            "topic_type": row.topic_type,
+            "language": row.language,
+            "complexity_level": row.complexity_level,
+            "total_nodes": row.total_nodes,
+            "source_count": row.source_count,
+            "created_at": row.created_at.isoformat(),
+        }
+        for row in rows
+    ]
 
 
 @app.post(

@@ -49,7 +49,7 @@ export interface SkeletonNodeData {
   date: string;
   title: string;
   subtitle: string;
-  significance: SignificanceLevel;
+  significance: "revolutionary" | "high" | "medium";
   description: string;
   sources: string[];
   status: "skeleton";
@@ -107,7 +107,7 @@ export interface TimelineNode {
   date: string;
   title: string;
   subtitle: string;
-  significance: SignificanceLevel;
+  significance: "revolutionary" | "high" | "medium";
   description: string;
   sources: string[];
   status: NodeStatus;
@@ -117,20 +117,14 @@ export interface TimelineNode {
 
 export type AppPhase = "input" | "proposal" | "research";
 
-export type SignificanceLevel = "revolutionary" | "high" | "medium";
-
-export interface FilterState {
-  significance: Set<SignificanceLevel>;
-  phase: string | null;
-  yearRange: [number, number] | null;
-  searchQuery: string;
+export interface ResearchSummary {
+  id: string;
+  topic: string;
+  topic_type: string;
+  language: string;
+  complexity_level: string;
+  total_nodes: number;
+  source_count: number;
+  created_at: string;
 }
 
-export function createDefaultFilterState(): FilterState {
-  return {
-    significance: new Set<SignificanceLevel>(["revolutionary", "high", "medium"]),
-    phase: null,
-    yearRange: null,
-    searchQuery: "",
-  };
-}

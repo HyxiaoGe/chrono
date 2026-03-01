@@ -6,8 +6,6 @@ interface Props {
   node: TimelineNode;
   isSelected: boolean;
   isHighlighted: boolean;
-  isSearchMatch: boolean;
-  isCurrentMatch: boolean;
   connectionCount: number;
   onSelect: (id: string) => void;
   language: string;
@@ -28,8 +26,6 @@ export function TimelineNodeCard({
   node,
   isSelected,
   isHighlighted,
-  isSearchMatch,
-  isCurrentMatch,
   connectionCount,
   onSelect,
   language,
@@ -40,9 +36,6 @@ export function TimelineNodeCard({
 
   const highlightClass = isHighlighted ? "animate-highlight" : "";
   const selectedClass = isSelected ? "ring-2 ring-chrono-accent/40" : "";
-  const currentMatchClass = isCurrentMatch
-    ? "ring-2 ring-chrono-accent/60"
-    : "";
 
   if (!isComplete) {
     return <SkeletonCard node={node} sig={sig} />;
@@ -50,18 +43,16 @@ export function TimelineNodeCard({
 
   const badge =
     connectionCount > 0 ? (
-      <div className="mt-2 text-chrono-tiny text-chrono-text-muted">
+      <div className="mt-2 text-chrono-tiny text-chrono-text-muted opacity-0 transition-opacity group-hover:opacity-100">
         {"◈ "}
         {connectionCount} {isZh ? "个关联" : "connections"}
       </div>
     ) : null;
 
   if (sig === "revolutionary") {
-    const searchClass =
-      isSearchMatch && !isCurrentMatch ? "ring-1 ring-chrono-accent/40" : "";
     return (
       <div
-        className={`animate-fade-in cursor-pointer rounded-xl border-l-4 border-chrono-revolutionary bg-chrono-surface p-6 shadow-lg shadow-chrono-revolutionary/5 transition-all ${selectedClass} ${highlightClass} ${currentMatchClass} ${searchClass}`}
+        className={`group animate-fade-in cursor-pointer rounded-xl border-l-4 border-chrono-revolutionary bg-chrono-surface-hover p-6 shadow-md shadow-chrono-revolutionary/10 transition-all ${selectedClass} ${highlightClass}`}
         onClick={() => onSelect(node.id)}
       >
         <h3 className="text-chrono-subtitle font-semibold text-chrono-revolutionary">
@@ -80,13 +71,10 @@ export function TimelineNodeCard({
     );
   }
 
-  const searchBorder =
-    isSearchMatch && !isCurrentMatch ? "border-l-2 border-l-chrono-accent" : "";
-
   if (sig === "high") {
     return (
       <div
-        className={`animate-fade-in cursor-pointer rounded-xl border border-chrono-border bg-chrono-surface p-5 transition-all hover:border-chrono-border-active ${selectedClass} ${highlightClass} ${currentMatchClass} ${searchBorder}`}
+        className={`group animate-fade-in cursor-pointer rounded-xl border border-chrono-border bg-chrono-surface p-5 transition-all hover:border-chrono-border-active ${selectedClass} ${highlightClass}`}
         onClick={() => onSelect(node.id)}
       >
         <h3 className="font-semibold text-chrono-text">{node.title}</h3>
@@ -98,13 +86,14 @@ export function TimelineNodeCard({
     );
   }
 
+  // medium — borderless text row
   return (
     <div
-      className={`animate-fade-in cursor-pointer rounded-lg border border-chrono-border bg-chrono-surface px-4 py-3 transition-all hover:border-chrono-border-active ${selectedClass} ${highlightClass} ${currentMatchClass} ${searchBorder}`}
+      className={`group animate-fade-in cursor-pointer px-4 py-2 transition-all hover:bg-chrono-surface/50 ${selectedClass} ${highlightClass}`}
       onClick={() => onSelect(node.id)}
     >
-      <h3 className="font-medium text-chrono-text">{node.title}</h3>
-      <p className="mt-1 text-chrono-caption text-chrono-text-muted line-clamp-1">
+      <h3 className="font-medium text-chrono-text-secondary">{node.title}</h3>
+      <p className="mt-0.5 text-chrono-caption text-chrono-text-muted line-clamp-1">
         {node.description}
       </p>
       {badge}
@@ -114,16 +103,36 @@ export function TimelineNodeCard({
 
 function SkeletonCard({ node, sig }: { node: TimelineNode; sig: string }) {
   const isRev = sig === "revolutionary";
-  const padding = isRev ? "p-6" : sig === "high" ? "p-5" : "px-4 py-3";
-  const border = isRev
-    ? "border-l-4 border-chrono-revolutionary"
-    : "border border-chrono-border";
+  if (isRev) {
+    return (
+      <div className="rounded-xl border-l-4 border-chrono-revolutionary bg-chrono-surface-hover p-6">
+        <div className="font-semibold text-chrono-text">{node.title}</div>
+        <div className="mt-3 space-y-2">
+          <div className="shimmer h-3 w-full rounded" />
+          <div className="shimmer h-3 w-4/5 rounded" />
+          <div className="shimmer h-3 w-3/5 rounded" />
+        </div>
+      </div>
+    );
+  }
+  if (sig === "high") {
+    return (
+      <div className="rounded-xl border border-chrono-border bg-chrono-surface p-5">
+        <div className="font-semibold text-chrono-text">{node.title}</div>
+        <div className="mt-3 space-y-2">
+          <div className="shimmer h-3 w-full rounded" />
+          <div className="shimmer h-3 w-4/5 rounded" />
+          <div className="shimmer h-3 w-3/5 rounded" />
+        </div>
+      </div>
+    );
+  }
+  // medium skeleton — no border/bg
   return (
-    <div className={`rounded-xl bg-chrono-surface ${border} ${padding}`}>
-      <div className="font-semibold text-chrono-text">{node.title}</div>
-      <div className="mt-3 space-y-2">
+    <div className="px-4 py-2">
+      <div className="font-medium text-chrono-text-secondary">{node.title}</div>
+      <div className="mt-2 space-y-2">
         <div className="shimmer h-3 w-full rounded" />
-        <div className="shimmer h-3 w-4/5 rounded" />
         <div className="shimmer h-3 w-3/5 rounded" />
       </div>
     </div>

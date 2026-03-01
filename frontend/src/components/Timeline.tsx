@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type {
   TimelineNode,
   SynthesisData,
@@ -9,7 +9,9 @@ import type {
 } from "@/types";
 import type { ConnectionMap } from "@/hooks/useConnections";
 import type { PhaseGroup } from "@/utils/timeline";
+import { computeDenseGroups } from "@/utils/timeline";
 import { TimelineNodeCard } from "./TimelineNode";
+import { DenseGroupBlock } from "./DenseGroup";
 import { ExportDropdown } from "./ExportDropdown";
 
 interface Props {
@@ -24,9 +26,6 @@ interface Props {
   onSelectNode: (id: string) => void;
   connectionMap: ConnectionMap;
   phaseGroups: PhaseGroup[];
-  visibleNodeIds?: Set<string>;
-  matchedNodeIds?: Set<string>;
-  currentMatchId?: string | null;
 }
 
 // --- Year separators ---
@@ -151,6 +150,121 @@ function CollapsibleSection({
   );
 }
 
+// --- Synthesis block ---
+
+function SynthesisBlock({
+  synthesisData,
+  nodes,
+  connections,
+  dateCorrections,
+  language,
+  isZh,
+}: {
+  synthesisData: SynthesisData;
+  nodes: TimelineNode[];
+  connections: SynthesisData["connections"];
+  dateCorrections: SynthesisData["date_corrections"];
+  language: string;
+  isZh: boolean;
+}) {
+  const [summaryExpanded, setSummaryExpanded] = useState(false);
+  const longSummary = synthesisData.summary.length > 200;
+
+  return (
+    <div className="mb-8 animate-fade-in rounded-lg border border-chrono-border bg-chrono-surface/50 px-6 py-4">
+      <h3 className="mb-2 text-chrono-caption font-medium text-chrono-text-secondary">
+        {isZh ? "调研总结" : "Research Summary"}
+      </h3>
+      <p
+        className={`mb-2 text-chrono-body leading-relaxed text-chrono-text ${summaryExpanded ? "" : "line-clamp-3"}`}
+      >
+        {synthesisData.summary}
+      </p>
+      {longSummary && (
+        <button
+          onClick={() => setSummaryExpanded(!summaryExpanded)}
+          className="mb-2 text-chrono-tiny text-chrono-text-muted transition-colors hover:text-chrono-text-secondary"
+        >
+          {summaryExpanded ? (isZh ? "收起" : "Less") : (isZh ? "展开全文" : "More")}
+        </button>
+      )}
+      <p className="text-chrono-caption italic text-chrono-text-secondary">
+        {synthesisData.key_insight}
+      </p>
+
+      {/* Stats dashboard */}
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-chrono-tiny text-chrono-text-muted">
+        <span>
+          <span className="text-chrono-text">{nodes.length}</span>{" "}
+          {isZh ? "节点" : "nodes"}
+        </span>
+        <span>
+          <span className="text-chrono-text">
+            {synthesisData.source_count}
+          </span>{" "}
+          {isZh ? "来源" : "sources"}
+        </span>
+        {connections && connections.length > 0 && (
+          <span>
+            <span className="text-chrono-text">
+              {connections.length}
+            </span>{" "}
+            {isZh ? "因果关系" : "connections"}
+          </span>
+        )}
+        {dateCorrections && dateCorrections.length > 0 && (
+          <span>
+            <span className="text-chrono-text">
+              {dateCorrections.length}
+            </span>{" "}
+            {isZh ? "日期修正" : "corrections"}
+          </span>
+        )}
+        <span>{synthesisData.timeline_span}</span>
+      </div>
+
+      {/* Verification notes — collapsible */}
+      {synthesisData.verification_notes.length > 0 && (
+        <CollapsibleSection
+          title={isZh ? "验证备注" : "Verification Notes"}
+          count={synthesisData.verification_notes.length}
+          language={language}
+        >
+          {synthesisData.verification_notes.map((note, i) => (
+            <p key={i} className="text-chrono-tiny text-chrono-text-muted">
+              {note}
+            </p>
+          ))}
+        </CollapsibleSection>
+      )}
+
+      {/* Date corrections collapsible */}
+      {dateCorrections && dateCorrections.length > 0 && (
+        <CollapsibleSection
+          title={isZh ? "日期修正记录" : "Date Corrections"}
+          count={dateCorrections.length}
+          language={language}
+        >
+          {dateCorrections.map((corr) => {
+            const nodeTitle =
+              nodes.find((n) => n.id === corr.node_id)?.title ??
+              corr.node_id;
+            return (
+              <div
+                key={corr.node_id}
+                className="text-chrono-tiny text-chrono-text-muted"
+              >
+                {nodeTitle}: {corr.original_date} → {corr.corrected_date}
+                <span className="ml-2 opacity-60">({corr.reason})</span>
+              </div>
+            );
+          })}
+        </CollapsibleSection>
+      )}
+    </div>
+  );
+}
+
 // --- Main component ---
 
 export function Timeline({
@@ -165,16 +279,34 @@ export function Timeline({
   onSelectNode,
   connectionMap,
   phaseGroups,
-  visibleNodeIds,
-  matchedNodeIds,
-  currentMatchId,
 }: Props) {
   const isZh = language.startsWith("zh");
   const separators = computeSeparators(nodes);
 
+  const denseGroups = useMemo(() => computeDenseGroups(nodes), [nodes]);
+  const denseNodeSet = useMemo(
+    () => new Set(denseGroups.flatMap((g) => g.nodeIds)),
+    [denseGroups],
+  );
+  const denseGroupMap = useMemo(
+    () => new Map(denseGroups.map((g) => [g.startIndex, g])),
+    [denseGroups],
+  );
+
+  // Build set of indices inside dense groups (for separator suppression)
+  const denseInnerIndices = useMemo(() => {
+    const set = new Set<number>();
+    for (const g of denseGroups) {
+      for (let i = g.startIndex + 1; i <= g.endIndex; i++) set.add(i);
+    }
+    return set;
+  }, [denseGroups]);
+
   const phaseStartSet = new Set(phaseGroups.map((g) => g.startIndex));
   const filteredSeparators = separators.filter(
-    (s) => !phaseStartSet.has(s.insertBeforeIndex),
+    (s) =>
+      !phaseStartSet.has(s.insertBeforeIndex) &&
+      !denseInnerIndices.has(s.insertBeforeIndex),
   );
   const sepMap = new Map(
     filteredSeparators.map((s) => [s.insertBeforeIndex, s.label]),
@@ -183,7 +315,6 @@ export function Timeline({
 
   const connections = synthesisData?.connections;
   const dateCorrections = synthesisData?.date_corrections;
-  const hasSearch = matchedNodeIds && matchedNodeIds.size > 0;
 
   return (
     <div id="chrono-timeline" className="mx-auto max-w-3xl px-4 py-8">
@@ -221,80 +352,14 @@ export function Timeline({
 
       {/* Synthesis summary */}
       {synthesisData && (
-        <div className="mb-10 animate-fade-in rounded-lg border border-chrono-border bg-chrono-surface/50 p-6">
-          <h3 className="mb-3 text-chrono-caption font-medium text-chrono-text-secondary">
-            {isZh ? "调研总结" : "Research Summary"}
-          </h3>
-          <p className="mb-4 text-chrono-body leading-relaxed text-chrono-text">
-            {synthesisData.summary}
-          </p>
-          <p className="text-chrono-caption italic text-chrono-text-secondary">
-            {synthesisData.key_insight}
-          </p>
-
-          {/* Stats dashboard */}
-          <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-chrono-tiny text-chrono-text-muted">
-            <span>
-              <span className="text-chrono-accent">{nodes.length}</span>{" "}
-              {isZh ? "节点" : "nodes"}
-            </span>
-            <span>
-              <span className="text-chrono-accent">
-                {synthesisData.source_count}
-              </span>{" "}
-              {isZh ? "来源" : "sources"}
-            </span>
-            {connections && connections.length > 0 && (
-              <span>
-                <span className="text-chrono-accent">
-                  {connections.length}
-                </span>{" "}
-                {isZh ? "因果关系" : "connections"}
-              </span>
-            )}
-            {dateCorrections && dateCorrections.length > 0 && (
-              <span>
-                <span className="text-chrono-accent">
-                  {dateCorrections.length}
-                </span>{" "}
-                {isZh ? "日期修正" : "corrections"}
-              </span>
-            )}
-            <span>{synthesisData.timeline_span}</span>
-          </div>
-
-          {synthesisData.verification_notes.length > 0 && (
-            <div className="mt-3 text-chrono-tiny text-chrono-accent/70">
-              {synthesisData.verification_notes.map((note, i) => (
-                <p key={i}>{note}</p>
-              ))}
-            </div>
-          )}
-
-          {/* Date corrections collapsible */}
-          {dateCorrections && dateCorrections.length > 0 && (
-            <CollapsibleSection
-              title={isZh ? "日期修正记录" : "Date Corrections"}
-              count={dateCorrections.length}
-              language={language}
-            >
-              {dateCorrections.map((corr) => {
-                const nodeTitle =
-                  nodes.find((n) => n.id === corr.node_id)?.title ??
-                  corr.node_id;
-                return (
-                  <div
-                    key={corr.node_id}
-                    className="text-chrono-tiny text-chrono-text-muted"
-                  >
-                    {nodeTitle}: {corr.original_date} → {corr.corrected_date}
-                    <span className="ml-2 opacity-60">({corr.reason})</span>
-                  </div>
-                );
-              })}
-            </CollapsibleSection>
-          )}
-        </div>
+        <SynthesisBlock
+          synthesisData={synthesisData}
+          nodes={nodes}
+          connections={connections}
+          dateCorrections={dateCorrections}
+          language={language}
+          isZh={isZh}
+        />
       )}
 
       {/* Timeline */}
@@ -303,29 +368,68 @@ export function Timeline({
         <div className="absolute left-20 top-0 bottom-0 w-px bg-chrono-timeline" />
 
         {nodes.map((node, index) => {
+          // Skip nodes inside a dense group (but not the first node)
+          if (denseNodeSet.has(node.id) && !denseGroupMap.has(index)) return null;
+
           const sepLabel = sepMap.get(index);
           const phaseGroup = phaseMap.get(index);
+          const denseGroup = denseGroupMap.get(index);
+
+          if (denseGroup) {
+            return (
+              <div key={`dense-${denseGroup.startIndex}`}>
+                {/* Phase header */}
+                {phaseGroup && (
+                  <div className={`mb-6 ${index > 0 ? "mt-12" : ""}`}>
+                    <div className="mb-4 h-px bg-gradient-to-r from-transparent via-chrono-border to-transparent" />
+                    <div className="flex items-start">
+                      <div className="w-16 shrink-0" />
+                      <div className="w-8 shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <h2 className="text-chrono-title font-semibold text-chrono-text">
+                          {phaseGroup.name}
+                        </h2>
+                        <span className="text-chrono-caption text-chrono-text-muted">
+                          {phaseGroup.timeRange}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {/* Year separator before group */}
+                {sepLabel && (
+                  <div className="mb-4 flex items-center">
+                    <div className="w-16 shrink-0" />
+                    <div className="flex w-8 shrink-0 justify-center">
+                      <div className="h-px w-6 bg-chrono-border" />
+                    </div>
+                    <span className="pl-1 text-chrono-body font-medium text-chrono-text-secondary">
+                      {sepLabel}
+                    </span>
+                  </div>
+                )}
+                <DenseGroupBlock
+                  group={denseGroup}
+                  nodes={nodes}
+                  selectedNodeId={selectedNodeId}
+                  highlightedNodeId={highlightedNodeId}
+                  onSelectNode={onSelectNode}
+                  connectionMap={connectionMap}
+                  language={language}
+                />
+              </div>
+            );
+          }
+
           const connInfo = connectionMap.get(node.id);
           const connCount = connInfo
             ? connInfo.outgoing.length + connInfo.incoming.length
             : 0;
 
-          const isFilteredOut = visibleNodeIds && !visibleNodeIds.has(node.id);
-          const isSearchMatch = matchedNodeIds?.has(node.id) ?? false;
-          const isCurrentMatch = currentMatchId === node.id;
-          const dimForSearch = hasSearch && !isFilteredOut && !isSearchMatch;
-
           return (
             <div
               key={node.id}
               id={node.id}
-              className={
-                isFilteredOut
-                  ? "opacity-25 pointer-events-none"
-                  : dimForSearch
-                    ? "opacity-40"
-                    : ""
-              }
             >
               {/* Phase header */}
               {phaseGroup && (
@@ -355,7 +459,7 @@ export function Timeline({
                   <div className="flex w-8 shrink-0 justify-center">
                     <div className="h-px w-6 bg-chrono-border" />
                   </div>
-                  <span className="text-chrono-caption font-medium text-chrono-text-muted">
+                  <span className="pl-1 text-chrono-body font-medium text-chrono-text-secondary">
                     {sepLabel}
                   </span>
                 </div>
@@ -379,8 +483,6 @@ export function Timeline({
                     node={node}
                     isSelected={selectedNodeId === node.id}
                     isHighlighted={highlightedNodeId === node.id}
-                    isSearchMatch={isSearchMatch}
-                    isCurrentMatch={isCurrentMatch}
                     connectionCount={connCount}
                     onSelect={onSelectNode}
                     language={language}

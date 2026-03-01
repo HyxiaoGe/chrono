@@ -28,6 +28,16 @@ async def get_nodes_for_research(
     return list(result.scalars().all())
 
 
+async def list_researches(session: AsyncSession) -> list[ResearchRow]:
+    stmt = (
+        select(ResearchRow)
+        .where(ResearchRow.total_nodes > 0)
+        .order_by(ResearchRow.created_at.desc())
+    )
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
 async def save_research(
     session: AsyncSession,
     *,
