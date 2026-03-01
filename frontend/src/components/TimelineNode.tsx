@@ -41,6 +41,27 @@ export function TimelineNodeCard({
     return <SkeletonCard node={node} sig={sig} />;
   }
 
+  const details = node.details;
+
+  const meta =
+    details && (details.location || (details.tags && details.tags.length > 0)) ? (
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        {details.location && (
+          <span className="text-chrono-tiny text-chrono-text-muted">
+            {details.location}
+          </span>
+        )}
+        {details.tags?.slice(0, 2).map((tag) => (
+          <span
+            key={tag}
+            className="rounded-full bg-chrono-accent/10 px-1.5 py-0.5 text-chrono-tiny text-chrono-accent"
+          >
+            {tag.replace("_", " ")}
+          </span>
+        ))}
+      </div>
+    ) : null;
+
   const badge =
     connectionCount > 0 ? (
       <div className="mt-2 text-chrono-tiny text-chrono-text-muted opacity-0 transition-opacity group-hover:opacity-100">
@@ -66,6 +87,7 @@ export function TimelineNodeCard({
         <p className="mt-2 text-chrono-body text-chrono-text-secondary">
           {node.description}
         </p>
+        {meta}
         {badge}
       </div>
     );
@@ -81,6 +103,7 @@ export function TimelineNodeCard({
         <p className="mt-1.5 text-chrono-body text-chrono-text-secondary line-clamp-2">
           {node.description}
         </p>
+        {meta}
         {badge}
       </div>
     );
@@ -96,6 +119,7 @@ export function TimelineNodeCard({
       <p className="mt-0.5 text-chrono-caption text-chrono-text-muted line-clamp-1">
         {node.description}
       </p>
+      {meta}
       {badge}
     </div>
   );

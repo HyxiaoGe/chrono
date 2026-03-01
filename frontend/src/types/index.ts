@@ -62,6 +62,10 @@ export interface NodeDetailData {
   key_people: string[];
   context: string;
   sources: string[];
+  key_stats?: string[];
+  notable_quote?: string;
+  location?: string;
+  tags?: string[];
 }
 
 export interface NodeDetailEvent {

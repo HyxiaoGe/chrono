@@ -111,6 +111,10 @@ class NodeDetail(BaseModel):
     key_people: list[str]
     context: str
     sources: list[str] = Field(default_factory=list)
+    key_stats: list[str] = Field(default_factory=list)
+    notable_quote: str = ""
+    location: str = ""
+    tags: list[str] = Field(default_factory=list)
 
 
 # --- Phase 3: Gap Analysis models ---
