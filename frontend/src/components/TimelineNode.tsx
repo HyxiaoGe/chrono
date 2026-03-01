@@ -1,6 +1,7 @@
 "use client";
 
 import type { TimelineNode } from "@/types";
+import { tagLabel } from "@/utils/tags";
 
 interface Props {
   node: TimelineNode;
@@ -56,7 +57,7 @@ export function TimelineNodeCard({
             key={tag}
             className="rounded-full bg-chrono-accent/10 px-1.5 py-0.5 text-chrono-tiny text-chrono-accent"
           >
-            {tag.replace("_", " ")}
+            {tagLabel(tag, language)}
           </span>
         ))}
       </div>

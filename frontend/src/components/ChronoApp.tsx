@@ -11,8 +11,7 @@ import type {
   SkeletonNodeData,
   NodeDetailEvent,
 } from "@/types";
-import type { Locale } from "@/data/landing";
-import { getLocale, persistLocale } from "@/data/landing";
+import { useLocale } from "@/data/landing";
 import { useResearchStream } from "@/hooks/useResearchStream";
 import { useConnections } from "@/hooks/useConnections";
 import { useActiveNode } from "@/hooks/useActiveNode";
@@ -25,22 +24,10 @@ import { DetailPanel } from "./DetailPanel";
 import { MiniMap } from "./MiniMap";
 
 export function ChronoApp() {
-  const [locale, setLocale] = useState<Locale>("en");
+  const [locale, toggleLocale] = useLocale();
   const [phase, setPhase] = useState<AppPhase>("input");
-
-  useEffect(() => {
-    setLocale(getLocale());
-  }, []);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-
-  function toggleLocale() {
-    setLocale((l) => {
-      const next = l === "en" ? "zh" : "en";
-      persistLocale(next);
-      return next;
-    });
-  }
 
   const [autoTopic] = useState(() => {
     if (typeof window === "undefined") return null;

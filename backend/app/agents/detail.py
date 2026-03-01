@@ -32,8 +32,11 @@ detail_agent = Agent(
 - sources: 留空（系统会自动填充）
 
 ### 数据与引用
-- key_stats: 2-4 条关键数据或统计（每条必须包含具体数字）
-  示例："首日销量 27 万台" / "App Store 上线首批 500 款应用"
+- key_stats: 2-4 条关键数据或统计
+  每条必须是一个简短的量化指标（不超过 15 个字/词），格式为 "指标: 数值" 或直接 "数值 + 说明"
+  示例："首日销量: 27 万台" / "市值突破 1 万亿美元" / "峰值价格: $69,044"
+  反面示例（不要这样写）："The Genesis block was mined on January 3, 2009 at 06:15:05 UTC"（这是事实描述不是统计）
+  反面示例（不要这样写）："Block hash: 000000000019d6689c..."（这是技术参数不是统计）
   如果该事件没有明确的量化数据，可以为空列表
 
 - notable_quote: 与该事件最相关的一条名人原话（格式："原话 —— 说话人, 身份"）
@@ -46,11 +49,13 @@ detail_agent = Agent(
 - tags: 2-4 个英文分类标签，从以下选择：
   product_launch / hardware / software / business / policy / milestone /
   innovation / partnership / acquisition / regulation / cultural_shift /
-  scientific / military / diplomatic / security / technological_shift
+  scientific / military / diplomatic / security / infrastructure
+  仅从以上列表选择，不要自创标签
 
 ## 约束
 
 - key_features 和 key_stats 必须是具体的事实和数据，不要写空泛的评价
+- key_stats 和 key_features 不要有内容重叠。key_stats 只放量化数字指标，key_features 放定性的特征描述
 - notable_quote 必须是真实引用，宁可留空也不要编造
 - tags 始终用英文，不受输出语言影响
 - 如果参考资料与你的知识有冲突，以参考资料为准""",

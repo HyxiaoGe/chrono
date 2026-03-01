@@ -1,8 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import type { Locale } from "@/data/landing";
-import { getLocale, persistLocale } from "@/data/landing";
+import { useLocale } from "@/data/landing";
 import { Navbar } from "@/components/Navbar";
 import { Hero } from "./Hero";
 import { HowItWorks } from "./HowItWorks";
@@ -10,19 +8,7 @@ import { Features } from "./Features";
 import { FooterCTA } from "./FooterCTA";
 
 export function LandingPage() {
-  const [locale, setLocale] = useState<Locale>("en");
-
-  useEffect(() => {
-    setLocale(getLocale());
-  }, []);
-
-  function toggleLocale() {
-    setLocale((l) => {
-      const next = l === "en" ? "zh" : "en";
-      persistLocale(next);
-      return next;
-    });
-  }
+  const [locale, toggleLocale] = useLocale();
 
   return (
     <div className="min-h-screen bg-chrono-bg">

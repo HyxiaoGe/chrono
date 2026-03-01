@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import type { TimelineNode } from "@/types";
 import type { ConnectionMap } from "@/hooks/useConnections";
 import { connectionTypeColor } from "./TimelineNode";
+import { tagLabel } from "@/utils/tags";
 
 const LABELS: Record<string, Record<string, string>> = {
   key_features: { zh: "关键特性", en: "Key Features" },
@@ -15,35 +16,9 @@ const LABELS: Record<string, Record<string, string>> = {
   key_stats: { zh: "关键数据", en: "Key Stats" },
 };
 
-const TAG_DISPLAY: Record<string, Record<string, string>> = {
-  product_launch: { en: "Product Launch", zh: "产品发布" },
-  hardware: { en: "Hardware", zh: "硬件" },
-  software: { en: "Software", zh: "软件" },
-  business: { en: "Business", zh: "商业" },
-  policy: { en: "Policy", zh: "政策" },
-  milestone: { en: "Milestone", zh: "里程碑" },
-  innovation: { en: "Innovation", zh: "创新" },
-  partnership: { en: "Partnership", zh: "合作" },
-  acquisition: { en: "Acquisition", zh: "收购" },
-  regulation: { en: "Regulation", zh: "监管" },
-  cultural_shift: { en: "Cultural", zh: "文化" },
-  scientific: { en: "Scientific", zh: "科学" },
-  military: { en: "Military", zh: "军事" },
-  diplomatic: { en: "Diplomatic", zh: "外交" },
-  security: { en: "Security", zh: "安全" },
-  technological_shift: { en: "Tech Shift", zh: "技术变革" },
-};
-
 function label(key: string, language: string): string {
   const entry = LABELS[key];
   if (!entry) return key;
-  if (language.startsWith("zh")) return entry.zh;
-  return entry.en;
-}
-
-function tagLabel(tag: string, language: string): string {
-  const entry = TAG_DISPLAY[tag];
-  if (!entry) return tag;
   if (language.startsWith("zh")) return entry.zh;
   return entry.en;
 }
@@ -182,13 +157,17 @@ export function DetailPanel({
           </div>
 
           {/* Notable quote */}
-          {details?.notable_quote && (
-            <blockquote className="border-l-2 border-chrono-accent/50 pl-4 py-2">
-              <p className="text-chrono-body italic text-chrono-text-secondary">
-                {details.notable_quote}
-              </p>
-            </blockquote>
-          )}
+          {(() => {
+            const cleanQuote =
+              details?.notable_quote?.replace(/^["'\\]+$/, "").trim() || "";
+            return cleanQuote ? (
+              <blockquote className="border-l-2 border-chrono-accent/50 pl-4 py-2">
+                <p className="text-chrono-body italic text-chrono-text-secondary">
+                  {cleanQuote}
+                </p>
+              </blockquote>
+            ) : null;
+          })()}
 
           <p className="text-chrono-body leading-relaxed text-chrono-text-secondary">
             {displayNode.description}
@@ -199,18 +178,19 @@ export function DetailPanel({
               {/* Key Stats */}
               {details.key_stats && details.key_stats.length > 0 && (
                 <DetailSection title={label("key_stats", language)}>
-                  <div className="grid grid-cols-2 gap-2">
+                  <ul className="space-y-2">
                     {details.key_stats.map((stat, i) => (
-                      <div
+                      <li
                         key={i}
-                        className="rounded-lg bg-chrono-surface p-3 border border-chrono-border/50"
+                        className="flex items-baseline gap-2 rounded-lg bg-chrono-surface/50 px-3 py-2 border border-chrono-border/30"
                       >
+                        <span className="shrink-0 mt-1 h-1.5 w-1.5 rounded-full bg-chrono-accent" />
                         <span className="text-chrono-caption text-chrono-text-secondary">
                           {stat}
                         </span>
-                      </div>
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 </DetailSection>
               )}
 

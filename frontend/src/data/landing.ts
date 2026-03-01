@@ -1,6 +1,15 @@
+import { useSyncExternalStore, useCallback } from "react";
+
 export type Locale = "en" | "zh";
 
 const LOCALE_KEY = "chrono-locale";
+
+const subscribers = new Set<() => void>();
+
+function subscribe(callback: () => void) {
+  subscribers.add(callback);
+  return () => { subscribers.delete(callback); };
+}
 
 export function getLocale(): Locale {
   if (typeof window === "undefined") return "en";
@@ -11,6 +20,20 @@ export function getLocale(): Locale {
 
 export function persistLocale(locale: Locale) {
   localStorage.setItem(LOCALE_KEY, locale);
+  subscribers.forEach((cb) => cb());
+}
+
+export function useLocale(): [Locale, () => void] {
+  const locale = useSyncExternalStore(
+    subscribe,
+    getLocale,
+    () => "en" as Locale,
+  );
+  const toggle = useCallback(() => {
+    const next = getLocale() === "en" ? "zh" : "en";
+    persistLocale(next);
+  }, []);
+  return [locale, toggle];
 }
 
 interface LandingMessages {
