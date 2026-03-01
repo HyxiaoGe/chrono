@@ -12,9 +12,11 @@ import type {
   NodeDetailEvent,
 } from "@/types";
 import { useResearchStream } from "@/hooks/useResearchStream";
+import { AppShell } from "./AppShell";
 import { SearchInput } from "./SearchInput";
 import { ProposalCard } from "./ProposalCard";
 import { Timeline } from "./Timeline";
+import { DetailPanel } from "./DetailPanel";
 
 export function ChronoApp() {
   const [phase, setPhase] = useState<AppPhase>("input");
@@ -31,6 +33,9 @@ export function ChronoApp() {
   const [progressMessage, setProgressMessage] = useState("");
   const [synthesisData, setSynthesisData] = useState<SynthesisData | null>(null);
   const [completeData, setCompleteData] = useState<CompleteData | null>(null);
+
+  // Detail panel
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   function handleSearch(topic: string) {
     setError(null);
@@ -120,9 +125,14 @@ export function ChronoApp() {
   });
 
   const language = proposal?.language ?? "en";
+  const selectedNode =
+    selectedNodeId ? (nodes.find((n) => n.id === selectedNodeId) ?? null) : null;
 
   return (
-    <main className="min-h-screen">
+    <AppShell
+      topic={phase !== "input" ? proposal?.topic : undefined}
+      showTopBar={phase !== "input"}
+    >
       {phase === "input" && (
         <SearchInput
           onSearch={handleSearch}
@@ -138,15 +148,24 @@ export function ChronoApp() {
         />
       )}
       {phase === "research" && (
-        <Timeline
-          nodes={nodes}
-          progressMessage={progressMessage}
-          synthesisData={synthesisData}
-          completeData={completeData}
-          proposal={proposal}
-          language={language}
-        />
+        <>
+          <Timeline
+            nodes={nodes}
+            progressMessage={progressMessage}
+            synthesisData={synthesisData}
+            completeData={completeData}
+            proposal={proposal}
+            language={language}
+            selectedNodeId={selectedNodeId}
+            onSelectNode={setSelectedNodeId}
+          />
+          <DetailPanel
+            node={selectedNode}
+            language={language}
+            onClose={() => setSelectedNodeId(null)}
+          />
+        </>
       )}
-    </main>
+    </AppShell>
   );
 }

@@ -19,8 +19,10 @@ export function SearchInput({ onSearch, isPending, error }: Props) {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-4">
-      <h1 className="mb-2 text-5xl font-bold tracking-tight">Chrono</h1>
-      <p className="mb-10 text-zinc-500">
+      <h1 className="mb-2 text-chrono-hero font-bold tracking-wider text-chrono-accent">
+        Chrono
+      </h1>
+      <p className="mb-10 text-chrono-text-muted">
         Enter any topic. AI researches its timeline.
       </p>
       <form onSubmit={handleSubmit} className="flex w-full max-w-md gap-3">
@@ -31,23 +33,21 @@ export function SearchInput({ onSearch, isPending, error }: Props) {
           placeholder="iPhone, 比特币, Cold War..."
           disabled={isPending}
           autoFocus
-          className="flex-1 rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3
-                     text-zinc-100 placeholder-zinc-600 outline-none
-                     focus:border-zinc-600 transition-colors"
+          className="flex-1 rounded-lg border border-chrono-border bg-chrono-surface px-4 py-3
+                     text-chrono-text placeholder-chrono-text-muted outline-none
+                     focus:border-chrono-border-active transition-colors"
         />
         <button
           type="submit"
           disabled={isPending || !topic.trim()}
-          className="rounded-lg bg-zinc-100 px-6 py-3 font-medium text-zinc-900
-                     hover:bg-zinc-200 disabled:opacity-40 transition-colors cursor-pointer
+          className="rounded-lg bg-chrono-text px-6 py-3 font-medium text-chrono-bg
+                     hover:bg-chrono-text/90 disabled:opacity-40 transition-colors cursor-pointer
                      disabled:cursor-not-allowed"
         >
           {isPending ? "Analyzing..." : "Research"}
         </button>
       </form>
-      {error && (
-        <p className="mt-4 text-sm text-red-400">{error}</p>
-      )}
+      {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
     </div>
   );
 }
