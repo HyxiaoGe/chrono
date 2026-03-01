@@ -4,6 +4,7 @@ import { useReducer, useEffect } from "react";
 import { demoData } from "@/data/demo";
 import type { DemoData } from "@/data/demo";
 import type { Locale } from "@/data/landing";
+import { messages } from "@/data/landing";
 import { TimelineNodeCard } from "./TimelineNode";
 import type { TimelineNode } from "@/types";
 
@@ -159,7 +160,7 @@ function DemoSearch({
   );
 }
 
-function DemoProposal({ data }: { data: DemoData }) {
+function DemoProposal({ data, locale }: { data: DemoData; locale: Locale }) {
   const { proposal } = data;
   const activeDots = 1;
   return (
@@ -185,7 +186,7 @@ function DemoProposal({ data }: { data: DemoData }) {
         </p>
         <div className="mt-4">
           <h3 className="text-chrono-tiny font-medium uppercase tracking-wider text-chrono-text-muted">
-            Research Dimensions
+            {messages[locale].demo.researchDimensions}
           </h3>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {proposal.research_threads.map((thread) => (
@@ -214,11 +215,15 @@ function DemoTimeline({
   visibleNodes,
   completedNodes,
   scrollY,
+  locale,
+  showSynthesis,
 }: {
   data: DemoData;
   visibleNodes: number;
   completedNodes: number;
   scrollY: number;
+  locale: Locale;
+  showSynthesis: boolean;
 }) {
   const displayNodes: TimelineNode[] = data.nodes
     .slice(0, visibleNodes)
@@ -274,23 +279,24 @@ function DemoTimeline({
                   isHighlighted={false}
                   connectionCount={0}
                   onSelect={() => {}}
-                  language={node.sources.length > 0 ? "en" : "en"}
+                  language={locale === "zh" ? "zh" : "en"}
                 />
               </div>
             </div>
           );
         })}
       </div>
+      {showSynthesis && <DemoSynthesis data={data} locale={locale} />}
     </div>
   );
 }
 
-function DemoSynthesis({ data }: { data: DemoData }) {
+function DemoSynthesis({ data, locale }: { data: DemoData; locale: Locale }) {
   const { synthesis } = data;
   return (
     <div className="mx-4 mb-4 animate-fade-in rounded-lg border border-chrono-border bg-chrono-surface p-4">
       <h4 className="text-chrono-tiny font-medium text-chrono-text-muted uppercase tracking-wider mb-2">
-        Synthesis
+        {messages[locale].demo.synthesis}
       </h4>
       <p className="text-chrono-caption text-chrono-text-secondary">
         {synthesis.summary}
@@ -409,11 +415,7 @@ export function DemoPlayer({ locale }: Props) {
           >
             <DemoSearch
               typedChars={state.typedChars}
-              subtitle={
-                demoData[locale]
-                  ? demoData[locale].proposal.user_facing.summary.slice(0, 50)
-                  : ""
-              }
+              subtitle={messages[locale].demo.subtitle}
             />
           </div>
         )}
@@ -426,7 +428,7 @@ export function DemoPlayer({ locale }: Props) {
               transition: "opacity 0.3s ease",
             }}
           >
-            <DemoProposal data={data} />
+            <DemoProposal data={data} locale={locale} />
           </div>
         )}
 
@@ -447,8 +449,9 @@ export function DemoPlayer({ locale }: Props) {
                 visibleNodes={state.visibleNodes}
                 completedNodes={state.completedNodes}
                 scrollY={state.scrollY}
+                locale={locale}
+                showSynthesis={state.showSynthesis}
               />
-              {state.showSynthesis && <DemoSynthesis data={data} />}
             </div>
           </>
         )}

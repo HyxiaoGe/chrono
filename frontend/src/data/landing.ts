@@ -12,7 +12,12 @@ interface LandingMessages {
     items: Array<{ title: string; description: string }>;
   };
   footer: { heading: string; cta: string; copyright: string };
-  demo: { skip: string; subtitle: string };
+  demo: {
+    skip: string;
+    subtitle: string;
+    researchDimensions: string;
+    synthesis: string;
+  };
 }
 
 export const messages: Record<Locale, LandingMessages> = {
@@ -72,6 +77,8 @@ export const messages: Record<Locale, LandingMessages> = {
     demo: {
       skip: "Skip",
       subtitle: "Enter any topic. AI researches its timeline.",
+      researchDimensions: "Research Dimensions",
+      synthesis: "Synthesis",
     },
   },
   zh: {
@@ -133,6 +140,8 @@ export const messages: Record<Locale, LandingMessages> = {
       skip: "\u8df3\u8fc7",
       subtitle:
         "\u8f93\u5165\u4efb\u610f\u4e3b\u9898\uff0cAI \u81ea\u52a8\u8c03\u7814\u5176\u65f6\u95f4\u7ebf\u3002",
+      researchDimensions: "\u8c03\u7814\u7ef4\u5ea6",
+      synthesis: "\u8c03\u7814\u603b\u7ed3",
     },
   },
 };
