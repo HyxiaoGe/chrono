@@ -11,6 +11,8 @@ import type {
   SkeletonNodeData,
   NodeDetailEvent,
 } from "@/types";
+import type { Locale } from "@/data/landing";
+import { getLocale, persistLocale } from "@/data/landing";
 import { useResearchStream } from "@/hooks/useResearchStream";
 import { useConnections } from "@/hooks/useConnections";
 import { useActiveNode } from "@/hooks/useActiveNode";
@@ -23,9 +25,18 @@ import { DetailPanel } from "./DetailPanel";
 import { MiniMap } from "./MiniMap";
 
 export function ChronoApp() {
+  const [locale, setLocale] = useState<Locale>(getLocale);
   const [phase, setPhase] = useState<AppPhase>("input");
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
+  function toggleLocale() {
+    setLocale((l) => {
+      const next = l === "en" ? "zh" : "en";
+      persistLocale(next);
+      return next;
+    });
+  }
 
   const [autoTopic] = useState(() => {
     if (typeof window === "undefined") return null;
@@ -194,10 +205,12 @@ export function ChronoApp() {
 
   return (
     <AppShell
-      topic={phase !== "input" ? proposal?.topic : undefined}
-      showTopBar={phase !== "input"}
+      topic={proposal?.topic}
+      showResearchInfo={phase === "research"}
       activeYear={activeYear}
       activePhase={activePhase}
+      locale={locale}
+      onToggleLocale={toggleLocale}
     >
       {phase === "input" && (
         <SearchInput
@@ -205,6 +218,7 @@ export function ChronoApp() {
           isPending={isPending}
           error={error}
           onSelectTopic={handleSearch}
+          locale={locale}
         />
       )}
       {phase === "proposal" && proposal && (

@@ -1,5 +1,18 @@
 export type Locale = "en" | "zh";
 
+const LOCALE_KEY = "chrono-locale";
+
+export function getLocale(): Locale {
+  if (typeof window === "undefined") return "en";
+  const stored = localStorage.getItem(LOCALE_KEY);
+  if (stored === "zh" || stored === "en") return stored;
+  return navigator.language.startsWith("zh") ? "zh" : "en";
+}
+
+export function persistLocale(locale: Locale) {
+  localStorage.setItem(LOCALE_KEY, locale);
+}
+
 interface LandingMessages {
   nav: { cta: string };
   hero: { title: string; titleAccent: string; subtitle: string; cta: string };
@@ -17,6 +30,16 @@ interface LandingMessages {
     subtitle: string;
     researchDimensions: string;
     synthesis: string;
+  };
+  app: {
+    title: string;
+    subtitle: string;
+    placeholder: string;
+    research: string;
+    analyzing: string;
+    recent: string;
+    ago: string;
+    nodes: string;
   };
 }
 
@@ -80,6 +103,16 @@ export const messages: Record<Locale, LandingMessages> = {
       researchDimensions: "Research Dimensions",
       synthesis: "Synthesis",
     },
+    app: {
+      title: "Chrono",
+      subtitle: "Enter any topic. AI researches its timeline.",
+      placeholder: "iPhone, \u6bd4\u7279\u5e01, Cold War...",
+      research: "Research",
+      analyzing: "Analyzing...",
+      recent: "Recent",
+      ago: "ago",
+      nodes: "nodes",
+    },
   },
   zh: {
     nav: { cta: "\u5f00\u59cb\u4f7f\u7528" },
@@ -142,6 +175,16 @@ export const messages: Record<Locale, LandingMessages> = {
         "\u8f93\u5165\u4efb\u610f\u4e3b\u9898\uff0cAI \u81ea\u52a8\u8c03\u7814\u5176\u65f6\u95f4\u7ebf\u3002",
       researchDimensions: "\u8c03\u7814\u7ef4\u5ea6",
       synthesis: "\u8c03\u7814\u603b\u7ed3",
+    },
+    app: {
+      title: "Chrono",
+      subtitle: "\u8f93\u5165\u4efb\u610f\u4e3b\u9898\uff0cAI \u81ea\u52a8\u8c03\u7814\u5176\u65f6\u95f4\u7ebf\u3002",
+      placeholder: "iPhone\u3001\u6bd4\u7279\u5e01\u3001\u4e8c\u6218...",
+      research: "\u5f00\u59cb\u8c03\u7814",
+      analyzing: "\u5206\u6790\u4e2d...",
+      recent: "\u6700\u8fd1\u7684\u8c03\u7814",
+      ago: "\u524d",
+      nodes: "\u4e2a\u8282\u70b9",
     },
   },
 };
