@@ -53,6 +53,7 @@ export interface SkeletonNodeData {
   description: string;
   sources: string[];
   status: "skeleton";
+  phase_name?: string;
 }
 
 export interface NodeDetailData {
@@ -75,6 +76,13 @@ export interface TimelineConnection {
   type: "caused" | "enabled" | "inspired" | "responded_to";
 }
 
+export interface DateCorrection {
+  node_id: string;
+  original_date: string;
+  corrected_date: string;
+  reason: string;
+}
+
 export interface SynthesisData {
   summary: string;
   key_insight: string;
@@ -82,6 +90,7 @@ export interface SynthesisData {
   source_count: number;
   verification_notes: string[];
   connections?: TimelineConnection[];
+  date_corrections?: DateCorrection[];
 }
 
 export interface CompleteData {
@@ -103,6 +112,7 @@ export interface TimelineNode {
   sources: string[];
   status: NodeStatus;
   details?: NodeDetailData;
+  phase_name?: string;
 }
 
 export type AppPhase = "input" | "proposal" | "research";

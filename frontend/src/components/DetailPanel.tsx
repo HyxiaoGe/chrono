@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import type { TimelineNode } from "@/types";
+import type { ConnectionMap } from "@/hooks/useConnections";
+import { connectionTypeColor } from "./TimelineNode";
 
 const LABELS: Record<string, Record<string, string>> = {
   key_features: { zh: "关键特性", en: "Key Features" },
@@ -9,6 +11,7 @@ const LABELS: Record<string, Record<string, string>> = {
   key_people: { zh: "关键人物", en: "Key People" },
   context: { zh: "背景", en: "Context" },
   sources: { zh: "来源", en: "Sources" },
+  connections: { zh: "因果关联", en: "Connections" },
 };
 
 function label(key: string, language: string): string {
@@ -21,10 +24,18 @@ function label(key: string, language: string): string {
 interface Props {
   node: TimelineNode | null;
   language: string;
+  connectionMap: ConnectionMap;
   onClose: () => void;
+  onNavigateToNode: (targetId: string) => void;
 }
 
-export function DetailPanel({ node, language, onClose }: Props) {
+export function DetailPanel({
+  node,
+  language,
+  connectionMap,
+  onClose,
+  onNavigateToNode,
+}: Props) {
   const [closing, setClosing] = useState(false);
   const [closingNode, setClosingNode] = useState<TimelineNode | null>(null);
 
@@ -61,6 +72,10 @@ export function DetailPanel({ node, language, onClose }: Props) {
   if (!displayNode) return null;
 
   const sig = displayNode.significance;
+  const connInfo = connectionMap.get(displayNode.id);
+  const hasConnections =
+    connInfo &&
+    (connInfo.outgoing.length > 0 || connInfo.incoming.length > 0);
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -105,7 +120,9 @@ export function DetailPanel({ node, language, onClose }: Props) {
           <div>
             <h2
               className={`text-chrono-title font-semibold ${
-                sig === "revolutionary" ? "text-chrono-revolutionary" : "text-chrono-text"
+                sig === "revolutionary"
+                  ? "text-chrono-revolutionary"
+                  : "text-chrono-text"
               }`}
             >
               {displayNode.title}
@@ -126,8 +143,13 @@ export function DetailPanel({ node, language, onClose }: Props) {
               <DetailSection title={label("key_features", language)}>
                 <ul className="space-y-1.5">
                   {displayNode.details.key_features.map((f, i) => (
-                    <li key={i} className="text-chrono-body text-chrono-text-secondary">
-                      <span className="mr-2 text-chrono-text-muted">&bull;</span>
+                    <li
+                      key={i}
+                      className="text-chrono-body text-chrono-text-secondary"
+                    >
+                      <span className="mr-2 text-chrono-text-muted">
+                        &bull;
+                      </span>
                       {f}
                     </li>
                   ))}
@@ -160,6 +182,52 @@ export function DetailPanel({ node, language, onClose }: Props) {
                   {displayNode.details.context}
                 </p>
               </DetailSection>
+
+              {/* Connections section */}
+              {hasConnections && (
+                <DetailSection title={label("connections", language)}>
+                  <div className="space-y-2">
+                    {connInfo.outgoing.map((conn, i) => (
+                      <button
+                        key={`out-${i}`}
+                        onClick={() => onNavigateToNode(conn.targetId)}
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-chrono-surface-hover"
+                      >
+                        <span className="text-chrono-tiny text-chrono-text-muted">
+                          →
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-chrono-caption text-chrono-text-secondary">
+                          {conn.targetTitle}
+                        </span>
+                        <span
+                          className={`shrink-0 rounded-full px-1.5 py-0.5 text-chrono-tiny ${connectionTypeColor(conn.type)}`}
+                        >
+                          {conn.type}
+                        </span>
+                      </button>
+                    ))}
+                    {connInfo.incoming.map((conn, i) => (
+                      <button
+                        key={`in-${i}`}
+                        onClick={() => onNavigateToNode(conn.sourceId)}
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-chrono-surface-hover"
+                      >
+                        <span className="text-chrono-tiny text-chrono-text-muted">
+                          ←
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-chrono-caption text-chrono-text-secondary">
+                          {conn.sourceTitle}
+                        </span>
+                        <span
+                          className={`shrink-0 rounded-full px-1.5 py-0.5 text-chrono-tiny ${connectionTypeColor(conn.type)}`}
+                        >
+                          {conn.type}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </DetailSection>
+              )}
 
               {displayNode.sources.length > 0 && (
                 <DetailSection title={label("sources", language)}>

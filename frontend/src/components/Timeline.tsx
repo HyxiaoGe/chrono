@@ -1,11 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import type {
   TimelineNode,
   SynthesisData,
   CompleteData,
   ResearchProposal,
 } from "@/types";
+import { useConnections } from "@/hooks/useConnections";
+import type { ConnectionMap } from "@/hooks/useConnections";
 import { TimelineNodeCard } from "./TimelineNode";
 
 interface Props {
@@ -16,8 +19,59 @@ interface Props {
   proposal: ResearchProposal | null;
   language: string;
   selectedNodeId: string | null;
+  highlightedNodeId: string | null;
   onSelectNode: (id: string) => void;
 }
+
+// --- Phase groups ---
+
+interface PhaseGroup {
+  name: string;
+  startIndex: number;
+  endIndex: number;
+  timeRange: string;
+}
+
+function computePhaseGroups(nodes: TimelineNode[]): PhaseGroup[] {
+  if (nodes.length === 0) return [];
+  if (!nodes.some((n) => n.phase_name)) return [];
+
+  const groups: PhaseGroup[] = [];
+  let currentPhase: string | null = null;
+  let startIndex = 0;
+
+  for (let i = 0; i < nodes.length; i++) {
+    const phase: string | null = nodes[i].phase_name ?? currentPhase;
+    if (phase && phase !== currentPhase) {
+      if (currentPhase !== null) {
+        groups.push(buildGroup(currentPhase, startIndex, i - 1, nodes));
+      }
+      currentPhase = phase;
+      startIndex = i;
+    } else if (!nodes[i].phase_name && currentPhase) {
+      // gap node without phase_name — stays in current phase
+    }
+  }
+  if (currentPhase !== null) {
+    groups.push(buildGroup(currentPhase, startIndex, nodes.length - 1, nodes));
+  }
+
+  return groups;
+}
+
+function buildGroup(
+  name: string,
+  start: number,
+  end: number,
+  nodes: TimelineNode[],
+): PhaseGroup {
+  const startYear = nodes[start].date.slice(0, 4);
+  const endYear = nodes[end].date.slice(0, 4);
+  const timeRange = startYear === endYear ? startYear : `${startYear} - ${endYear}`;
+  return { name, startIndex: start, endIndex: end, timeRange };
+}
+
+// --- Year separators ---
 
 interface Separator {
   label: string;
@@ -95,6 +149,8 @@ function computeSeparators(nodes: TimelineNode[]): Separator[] {
   return separators;
 }
 
+// --- Dot class ---
+
 function dotClass(sig: string): string {
   if (sig === "revolutionary") {
     return "h-4 w-4 rounded-full bg-chrono-revolutionary ring-4 ring-chrono-revolutionary/20";
@@ -105,6 +161,40 @@ function dotClass(sig: string): string {
   return "h-2 w-2 rounded-full bg-chrono-medium";
 }
 
+// --- Collapsible section ---
+
+function CollapsibleSection({
+  title,
+  count,
+  children,
+  language,
+}: {
+  title: string;
+  count: number;
+  children: React.ReactNode;
+  language: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const isZh = language.startsWith("zh");
+  return (
+    <div className="mt-3">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-2 text-chrono-tiny text-chrono-text-muted transition-colors hover:text-chrono-text-secondary"
+      >
+        <span>{open ? "▾" : "▸"}</span>
+        <span>{title}</span>
+        <span className="rounded-full bg-chrono-border px-1.5 py-0.5 text-chrono-tiny">
+          {count} {isZh ? "条" : ""}
+        </span>
+      </button>
+      {open && <div className="mt-2 space-y-1 pl-4">{children}</div>}
+    </div>
+  );
+}
+
+// --- Main component ---
+
 export function Timeline({
   nodes,
   progressMessage,
@@ -113,11 +203,25 @@ export function Timeline({
   proposal,
   language,
   selectedNodeId,
+  highlightedNodeId,
   onSelectNode,
 }: Props) {
   const isZh = language.startsWith("zh");
+  const phaseGroups = computePhaseGroups(nodes);
   const separators = computeSeparators(nodes);
-  const sepMap = new Map(separators.map((s) => [s.insertBeforeIndex, s.label]));
+
+  const phaseStartSet = new Set(phaseGroups.map((g) => g.startIndex));
+  const filteredSeparators = separators.filter(
+    (s) => !phaseStartSet.has(s.insertBeforeIndex),
+  );
+  const sepMap = new Map(
+    filteredSeparators.map((s) => [s.insertBeforeIndex, s.label]),
+  );
+  const phaseMap = new Map(phaseGroups.map((g) => [g.startIndex, g]));
+
+  const connections = synthesisData?.connections;
+  const dateCorrections = synthesisData?.date_corrections;
+  const connectionMap: ConnectionMap = useConnections(connections, nodes);
 
   function handleExportJSON() {
     const data = { proposal, nodes, synthesisData, completeData };
@@ -179,21 +283,68 @@ export function Timeline({
           <p className="text-chrono-caption italic text-chrono-text-secondary">
             {synthesisData.key_insight}
           </p>
-          <div className="mt-4 flex gap-4 text-chrono-tiny text-chrono-text-muted">
-            <span>{synthesisData.timeline_span}</span>
-            <span>&middot;</span>
+
+          {/* Stats dashboard */}
+          <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-chrono-tiny text-chrono-text-muted">
             <span>
-              {isZh
-                ? `${synthesisData.source_count} 个来源`
-                : `${synthesisData.source_count} sources`}
+              <span className="text-chrono-accent">{nodes.length}</span>{" "}
+              {isZh ? "节点" : "nodes"}
             </span>
+            <span>
+              <span className="text-chrono-accent">
+                {synthesisData.source_count}
+              </span>{" "}
+              {isZh ? "来源" : "sources"}
+            </span>
+            {connections && connections.length > 0 && (
+              <span>
+                <span className="text-chrono-accent">
+                  {connections.length}
+                </span>{" "}
+                {isZh ? "因果关系" : "connections"}
+              </span>
+            )}
+            {dateCorrections && dateCorrections.length > 0 && (
+              <span>
+                <span className="text-chrono-accent">
+                  {dateCorrections.length}
+                </span>{" "}
+                {isZh ? "日期修正" : "corrections"}
+              </span>
+            )}
+            <span>{synthesisData.timeline_span}</span>
           </div>
+
           {synthesisData.verification_notes.length > 0 && (
             <div className="mt-3 text-chrono-tiny text-chrono-accent/70">
               {synthesisData.verification_notes.map((note, i) => (
                 <p key={i}>{note}</p>
               ))}
             </div>
+          )}
+
+          {/* Date corrections collapsible */}
+          {dateCorrections && dateCorrections.length > 0 && (
+            <CollapsibleSection
+              title={isZh ? "日期修正记录" : "Date Corrections"}
+              count={dateCorrections.length}
+              language={language}
+            >
+              {dateCorrections.map((corr) => {
+                const nodeTitle =
+                  nodes.find((n) => n.id === corr.node_id)?.title ??
+                  corr.node_id;
+                return (
+                  <div
+                    key={corr.node_id}
+                    className="text-chrono-tiny text-chrono-text-muted"
+                  >
+                    {nodeTitle}: {corr.original_date} → {corr.corrected_date}
+                    <span className="ml-2 opacity-60">({corr.reason})</span>
+                  </div>
+                );
+              })}
+            </CollapsibleSection>
           )}
         </div>
       )}
@@ -205,8 +356,35 @@ export function Timeline({
 
         {nodes.map((node, index) => {
           const sepLabel = sepMap.get(index);
+          const phaseGroup = phaseMap.get(index);
+          const connInfo = connectionMap.get(node.id);
+          const connCount = connInfo
+            ? connInfo.outgoing.length + connInfo.incoming.length
+            : 0;
+
           return (
-            <div key={node.id}>
+            <div key={node.id} id={node.id}>
+              {/* Phase header */}
+              {phaseGroup && (
+                <div
+                  className={`mb-6 ${index > 0 ? "mt-12" : ""}`}
+                >
+                  <div className="mb-4 h-px bg-gradient-to-r from-transparent via-chrono-border to-transparent" />
+                  <div className="flex items-start">
+                    <div className="w-16 shrink-0" />
+                    <div className="w-8 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <h2 className="text-chrono-title font-semibold text-chrono-text">
+                        {phaseGroup.name}
+                      </h2>
+                      <span className="text-chrono-caption text-chrono-text-muted">
+                        {phaseGroup.timeRange}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Year separator */}
               {sepLabel && (
                 <div className="mb-4 flex items-center">
@@ -237,7 +415,10 @@ export function Timeline({
                   <TimelineNodeCard
                     node={node}
                     isSelected={selectedNodeId === node.id}
+                    isHighlighted={highlightedNodeId === node.id}
+                    connectionCount={connCount}
                     onSelect={onSelectNode}
+                    language={language}
                   />
                 </div>
               </div>

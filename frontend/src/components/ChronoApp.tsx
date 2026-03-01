@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useTransition } from "react";
+import { useState, useCallback, useTransition, useRef } from "react";
 import type {
   AppPhase,
   ResearchProposal,
@@ -12,6 +12,7 @@ import type {
   NodeDetailEvent,
 } from "@/types";
 import { useResearchStream } from "@/hooks/useResearchStream";
+import { useConnections } from "@/hooks/useConnections";
 import { AppShell } from "./AppShell";
 import { SearchInput } from "./SearchInput";
 import { ProposalCard } from "./ProposalCard";
@@ -36,6 +37,10 @@ export function ChronoApp() {
 
   // Detail panel
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+
+  // Highlight (connection navigation)
+  const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function handleSearch(topic: string) {
     setError(null);
@@ -70,6 +75,20 @@ export function ChronoApp() {
     setSessionId(null);
     setProposal(null);
   }
+
+  const handleNavigateToNode = useCallback((targetId: string) => {
+    setSelectedNodeId(null);
+    requestAnimationFrame(() => {
+      document
+        .getElementById(targetId)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+      setHighlightedNodeId(targetId);
+      highlightTimerRef.current = setTimeout(() => {
+        setHighlightedNodeId(null);
+      }, 1500);
+    });
+  }, []);
 
   useResearchStream(streamSessionId, {
     onProgress: useCallback((data: ProgressData) => {
@@ -127,6 +146,7 @@ export function ChronoApp() {
   const language = proposal?.language ?? "en";
   const selectedNode =
     selectedNodeId ? (nodes.find((n) => n.id === selectedNodeId) ?? null) : null;
+  const connectionMap = useConnections(synthesisData?.connections, nodes);
 
   return (
     <AppShell
@@ -157,12 +177,15 @@ export function ChronoApp() {
             proposal={proposal}
             language={language}
             selectedNodeId={selectedNodeId}
+            highlightedNodeId={highlightedNodeId}
             onSelectNode={setSelectedNodeId}
           />
           <DetailPanel
             node={selectedNode}
             language={language}
+            connectionMap={connectionMap}
             onClose={() => setSelectedNodeId(null)}
+            onNavigateToNode={handleNavigateToNode}
           />
         </>
       )}

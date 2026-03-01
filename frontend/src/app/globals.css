@@ -15,6 +15,10 @@
   --color-chrono-high: #8a9ab0;
   --color-chrono-medium: #5c6470;
   --color-chrono-timeline: #1e1e28;
+  --color-chrono-caused: #e07050;
+  --color-chrono-enabled: #5090d0;
+  --color-chrono-inspired: #50b080;
+  --color-chrono-responded: #9070c0;
 
   /* --- Font sizes --- */
   --font-size-chrono-hero: 3.5rem;
@@ -40,6 +44,7 @@
   --animate-slide-in-right: slide-in-right 0.3s ease-out forwards;
   --animate-slide-out-right: slide-out-right 0.25s ease-in forwards;
   --animate-indeterminate: indeterminate 1.5s ease-in-out infinite;
+  --animate-highlight: highlight 1.5s ease-out forwards;
 
   @keyframes fade-in {
     0% { opacity: 0; transform: translateY(8px); }
@@ -64,6 +69,11 @@
   @keyframes indeterminate {
     0% { transform: translateX(-100%); }
     100% { transform: translateX(400%); }
+  }
+
+  @keyframes highlight {
+    0%, 30% { box-shadow: 0 0 0 2px var(--color-chrono-accent); }
+    100% { box-shadow: 0 0 0 2px transparent; }
   }
 }
 

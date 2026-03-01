@@ -747,6 +747,11 @@ class Orchestrator:
                 synthesis_data = synthesis.model_dump()
                 synthesis_data["source_count"] = source_count
                 synthesis_data["connections"] = [c.model_dump() for c in gap_connections]
+                synthesis_data["date_corrections"] = (
+                    [c.model_dump() for c in synthesis.date_corrections]
+                    if synthesis.date_corrections
+                    else []
+                )
                 await session.push(SSEEventType.SYNTHESIS, synthesis_data)
 
                 # Apply date corrections
