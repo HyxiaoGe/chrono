@@ -205,12 +205,12 @@ export function ChronoApp() {
 
   return (
     <AppShell
-      topic={proposal?.topic}
-      showResearchInfo={phase === "research"}
-      activeYear={activeYear}
-      activePhase={activePhase}
       locale={locale}
       onToggleLocale={toggleLocale}
+      topic={proposal?.topic}
+      showResearchBar={phase === "research"}
+      activeYear={activeYear}
+      activePhase={activePhase}
     >
       {phase === "input" && (
         <SearchInput

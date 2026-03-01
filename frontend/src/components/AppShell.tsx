@@ -4,33 +4,40 @@ import { Navbar } from "./Navbar";
 import type { Locale } from "@/data/landing";
 
 interface Props {
-  topic?: string;
-  showResearchInfo: boolean;
-  activeYear?: string | null;
-  activePhase?: string | null;
   locale: Locale;
   onToggleLocale: () => void;
+  topic?: string;
+  activeYear?: string | null;
+  activePhase?: string | null;
+  showResearchBar?: boolean;
   children: React.ReactNode;
 }
 
 export function AppShell({
-  topic,
-  showResearchInfo,
-  activeYear,
-  activePhase,
   locale,
   onToggleLocale,
+  topic,
+  activeYear,
+  activePhase,
+  showResearchBar = false,
   children,
 }: Props) {
   return (
     <div className="min-h-screen bg-chrono-bg">
-      <Navbar
-        locale={locale}
-        onToggleLocale={onToggleLocale}
-        topic={showResearchInfo ? topic : undefined}
-        activeYear={showResearchInfo ? activeYear : undefined}
-        activePhase={showResearchInfo ? activePhase : undefined}
-      />
+      <Navbar locale={locale} onToggleLocale={onToggleLocale} />
+
+      {showResearchBar && (
+        <div className="sticky top-14 z-40 flex h-10 items-center justify-between border-b border-chrono-border/20 bg-chrono-bg/60 px-6 backdrop-blur-sm">
+          <span className="text-chrono-caption text-chrono-text-secondary">
+            {topic}
+          </span>
+          <div className="flex items-center gap-3 text-chrono-caption text-chrono-text-muted">
+            {activePhase && <span>{activePhase}</span>}
+            {activeYear && <span>{activeYear}</span>}
+          </div>
+        </div>
+      )}
+
       {children}
     </div>
   );

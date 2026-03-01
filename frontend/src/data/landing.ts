@@ -14,7 +14,7 @@ export function persistLocale(locale: Locale) {
 }
 
 interface LandingMessages {
-  nav: { cta: string };
+  nav: { home: string; getStarted: string };
   hero: { title: string; titleAccent: string; subtitle: string; cta: string };
   howItWorks: {
     heading: string;
@@ -45,7 +45,7 @@ interface LandingMessages {
 
 export const messages: Record<Locale, LandingMessages> = {
   en: {
-    nav: { cta: "Try Chrono" },
+    nav: { home: "Home", getStarted: "Get Started" },
     hero: {
       title: "Research any timeline",
       titleAccent: "in minutes, not hours",
@@ -115,7 +115,7 @@ export const messages: Record<Locale, LandingMessages> = {
     },
   },
   zh: {
-    nav: { cta: "\u5f00\u59cb\u4f7f\u7528" },
+    nav: { home: "\u9996\u9875", getStarted: "\u5f00\u59cb\u4f7f\u7528" },
     hero: {
       title: "\u4efb\u4f55\u4e3b\u9898\u7684\u65f6\u95f4\u7ebf",
       titleAccent:
