@@ -9,6 +9,12 @@ from app.services.tavily import TavilyService
 
 logger = logging.getLogger(__name__)
 
+_ALLOWED_TAGS = frozenset({
+    "product_launch", "hardware", "software", "business", "policy", "milestone",
+    "innovation", "partnership", "acquisition", "regulation", "cultural_shift",
+    "scientific", "military", "diplomatic", "security", "infrastructure",
+})
+
 detail_agent = Agent(
     resolve_model(settings.detail_model),
     output_type=NodeDetail,
@@ -92,7 +98,12 @@ async def run_detail_agent(
     )
     output = result.output
     output.sources = urls
-    # Clean up malformed empty quotes from LLM (e.g. '""', "''")
-    if output.notable_quote and not output.notable_quote.strip("\"'  "):
-        output.notable_quote = ""
+    # Clean up malformed empty quotes from LLM (e.g. '""', '"" ——', "''")
+    if output.notable_quote:
+        cleaned = output.notable_quote.strip("\"' ").replace("——", "").strip()
+        if not cleaned:
+            output.notable_quote = ""
+    # Filter tags to allowed set
+    if output.tags:
+        output.tags = [t for t in output.tags if t in _ALLOWED_TAGS]
     return output, context
