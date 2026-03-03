@@ -24,7 +24,7 @@ export function SearchInput({ onSearch, isPending, error, onSelectTopic, locale 
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-3.5rem)] flex-col items-center justify-center px-4">
+    <div className="flex min-h-[calc(100vh-3.5rem)] flex-col items-center pt-[15vh] px-4">
       <h1 className="mb-2 text-chrono-hero font-bold tracking-wider text-chrono-accent">
         {t.title}
       </h1>
@@ -54,6 +54,26 @@ export function SearchInput({ onSearch, isPending, error, onSelectTopic, locale 
         </button>
       </form>
       {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
+
+      {/* Suggested topics */}
+      <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+        <span className="text-chrono-caption text-chrono-text-muted">
+          {t.tryLabel}:
+        </span>
+        {t.suggestedTopics.map((s) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => setTopic(s)}
+            className="rounded-full border border-chrono-border/50 px-3 py-1 text-chrono-caption
+                       text-chrono-text-muted hover:border-chrono-accent hover:text-chrono-accent
+                       transition-colors cursor-pointer"
+          >
+            {s}
+          </button>
+        ))}
+      </div>
+
       <HistoryList onSelectTopic={onSelectTopic} locale={locale} />
     </div>
   );

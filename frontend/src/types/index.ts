@@ -130,5 +130,7 @@ export interface ResearchSummary {
   total_nodes: number;
   source_count: number;
   created_at: string;
+  timeline_span: string;
+  key_insight: string;
 }
 

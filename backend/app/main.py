@@ -51,6 +51,8 @@ async def list_researches_endpoint():
             "total_nodes": row.total_nodes,
             "source_count": row.source_count,
             "created_at": row.created_at.isoformat(),
+            "timeline_span": row.synthesis.get("timeline_span", "") if row.synthesis else "",
+            "key_insight": row.synthesis.get("key_insight", "") if row.synthesis else "",
         }
         for row in rows
     ]
