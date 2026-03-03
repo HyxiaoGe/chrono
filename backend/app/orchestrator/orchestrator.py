@@ -1,6 +1,7 @@
 import asyncio
 import copy
 import logging
+import random
 import re
 from datetime import date
 
@@ -488,6 +489,8 @@ actually happening
     retries=1,
 )
 
+_SPOT_CHECK_MAX = 5
+
 
 class Orchestrator:
     def __init__(self, tavily: TavilyService) -> None:
@@ -589,32 +592,84 @@ class Orchestrator:
         return await _merge_and_dedup(all_nodes, proposal.language)
 
     async def _filter_hallucinations(
-        self, nodes: list[dict], detail_contexts: dict[str, str]
+        self, nodes: list[dict], detail_contexts: dict[str, str], topic: str
     ) -> list[dict]:
+        # --- Check all recent nodes ---
         recent = [n for n in nodes if n["date"] >= "2025"]
-        if not recent:
+        if recent:
+            lines = []
+            for node in recent:
+                ctx = detail_contexts.get(node["id"], "No search results.")
+                lines.append(
+                    f"--- Node {node['id']}: {node['title']} ({node['date']}) ---\n"
+                    f"Description: {node['description']}\n"
+                    f"Search references:\n{ctx}\n"
+                )
+            prompt = "Check these recent events:\n\n" + "\n".join(lines)
+
+            try:
+                result = await _hallucination_agent.run(prompt)
+                remove_ids = set(result.output.remove_ids)
+                if remove_ids:
+                    for nid, reason in result.output.reasons.items():
+                        logger.info("Removing hallucinated node %s: %s", nid, reason)
+                    nodes = [n for n in nodes if n["id"] not in remove_ids]
+            except Exception:
+                logger.warning("Hallucination check failed, keeping all nodes")
+
+        # --- Historical node spot-check ---
+        try:
+            nodes = await self._spot_check_historical(nodes, topic)
+        except Exception:
+            logger.warning("Historical spot-check failed, keeping all nodes")
+
+        return nodes
+
+    async def _spot_check_historical(self, nodes: list[dict], topic: str) -> list[dict]:
+        historical = [n for n in nodes if n["date"] < "2025"]
+        if not historical:
             return nodes
 
+        sample_size = min(_SPOT_CHECK_MAX, len(historical))
+        sample = random.sample(historical, sample_size)
+        logger.info(
+            "Spot-checking %d historical nodes: %s",
+            sample_size,
+            [n["id"] for n in sample],
+        )
+
+        contexts: dict[str, str] = {}
+
+        async def _search_node(node: dict) -> None:
+            query = f"{topic} {node['title']} {node['date'][:4]}"
+            try:
+                ctx, _urls = await self.tavily.search_and_format(query, max_results=3)
+                contexts[node["id"]] = ctx
+            except Exception:
+                logger.warning("Spot-check search failed for %s, skipping", node["id"])
+                contexts[node["id"]] = "No search results available."
+
+        async with asyncio.TaskGroup() as tg:
+            for node in sample:
+                tg.create_task(_search_node(node))
+
         lines = []
-        for node in recent:
-            ctx = detail_contexts.get(node["id"], "No search results.")
+        for node in sample:
+            ctx = contexts.get(node["id"], "No search results available.")
             lines.append(
                 f"--- Node {node['id']}: {node['title']} ({node['date']}) ---\n"
                 f"Description: {node['description']}\n"
                 f"Search references:\n{ctx}\n"
             )
-        prompt = "Check these recent events:\n\n" + "\n".join(lines)
+        prompt = "Check these historical events:\n\n" + "\n".join(lines)
 
-        try:
-            result = await _hallucination_agent.run(prompt)
-            remove_ids = set(result.output.remove_ids)
-            if remove_ids:
-                for nid, reason in result.output.reasons.items():
-                    logger.info("Removing hallucinated node %s: %s", nid, reason)
+        result = await _hallucination_agent.run(prompt)
+        remove_ids = set(result.output.remove_ids)
+        if remove_ids:
+            for nid, reason in result.output.reasons.items():
+                logger.info("Removing hallucinated historical node %s: %s", nid, reason)
             return [n for n in nodes if n["id"] not in remove_ids]
-        except Exception:
-            logger.warning("Hallucination check failed, keeping all nodes")
-            return nodes
+        return nodes
 
     async def _run_gap_analysis(
         self,
@@ -716,7 +771,7 @@ class Orchestrator:
             gap_connections: list = []
             try:
                 # Step 3a: Hallucination filter
-                nodes = await self._filter_hallucinations(nodes, detail_contexts)
+                nodes = await self._filter_hallucinations(nodes, detail_contexts, proposal.topic)
 
                 # Step 3b: Gap analysis + connections
                 gap_result = await self._run_gap_analysis(nodes, proposal)
