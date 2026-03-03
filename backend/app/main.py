@@ -102,16 +102,26 @@ async def stream_research(session_id: str, request: Request) -> EventSourceRespo
     session = session_manager.get(session_id)
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found")
-    if session.status != SessionStatus.PROPOSAL_READY:
-        raise HTTPException(status_code=409, detail="Session already started or completed")
 
-    if session.cached_research_id is not None:
-        session.task = asyncio.create_task(replay_research(session, session.cached_research_id))
-    else:
-        session.task = asyncio.create_task(orchestrator.execute_research(session))
+    if session.status == SessionStatus.FAILED:
+        raise HTTPException(status_code=410, detail="Session failed")
 
+    if session.status == SessionStatus.PROPOSAL_READY:
+        # First connect — start execution
+        if session.cached_research_id is not None:
+            session.task = asyncio.create_task(replay_research(session, session.cached_research_id))
+        else:
+            session.task = asyncio.create_task(orchestrator.execute_research(session))
+        return EventSourceResponse(
+            session.event_generator(request),
+            ping=15,
+            send_timeout=30,
+            headers={"X-Accel-Buffering": "no"},
+        )
+
+    # EXECUTING or COMPLETED — reconnection / replay
     return EventSourceResponse(
-        session.event_generator(request),
+        session.replay_and_stream(request),
         ping=15,
         send_timeout=30,
         headers={"X-Accel-Buffering": "no"},

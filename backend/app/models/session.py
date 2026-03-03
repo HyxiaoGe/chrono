@@ -25,8 +25,10 @@ class ResearchSession:
         self.queue: asyncio.Queue[tuple[SSEEventType, dict[str, Any]] | None] = asyncio.Queue()
         self.task: asyncio.Task[None] | None = None
         self.cached_research_id: uuid.UUID | None = None
+        self._event_history: list[tuple[SSEEventType, dict[str, Any]]] = []
 
     async def push(self, event_type: SSEEventType, data: dict[str, Any]) -> None:
+        self._event_history.append((event_type, data))
         if self.status not in (SessionStatus.COMPLETED, SessionStatus.FAILED):
             await self.queue.put((event_type, data))
 
@@ -49,6 +51,31 @@ class ResearchSession:
                     data=json.dumps(data, ensure_ascii=False),
                     event=event_type.value,
                 )
+        except asyncio.CancelledError:
+            raise
+
+    async def replay_and_stream(self, request: Request):
+        try:
+            idx = 0
+            while True:
+                if await request.is_disconnected():
+                    return
+
+                # Drain any new history entries
+                while idx < len(self._event_history):
+                    event_type, data = self._event_history[idx]
+                    idx += 1
+                    yield ServerSentEvent(
+                        data=json.dumps(data, ensure_ascii=False),
+                        event=event_type.value,
+                    )
+
+                # If session is done, we've replayed everything
+                if self.status in (SessionStatus.COMPLETED, SessionStatus.FAILED):
+                    return
+
+                # Wait a bit for new events
+                await asyncio.sleep(0.3)
         except asyncio.CancelledError:
             raise
 

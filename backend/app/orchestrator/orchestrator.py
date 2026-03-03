@@ -473,7 +473,6 @@ actually happening
 class Orchestrator:
     def __init__(self, tavily: TavilyService) -> None:
         self.tavily = tavily
-        self._detail_contexts: dict[str, str] = {}
 
     async def create_proposal(self, request: ResearchRequest) -> ResearchProposal:
         language = _normalize_language(request.language)
@@ -570,14 +569,16 @@ class Orchestrator:
 
         return await _merge_and_dedup(all_nodes, proposal.language)
 
-    async def _filter_hallucinations(self, nodes: list[dict]) -> list[dict]:
+    async def _filter_hallucinations(
+        self, nodes: list[dict], detail_contexts: dict[str, str]
+    ) -> list[dict]:
         recent = [n for n in nodes if n["date"] >= "2025"]
         if not recent:
             return nodes
 
         lines = []
         for node in recent:
-            ctx = self._detail_contexts.get(node["id"], "No search results.")
+            ctx = detail_contexts.get(node["id"], "No search results.")
             lines.append(
                 f"--- Node {node['id']}: {node['title']} ({node['date']}) ---\n"
                 f"Description: {node['description']}\n"
@@ -595,8 +596,6 @@ class Orchestrator:
         except Exception:
             logger.warning("Hallucination check failed, keeping all nodes")
             return nodes
-        finally:
-            self._detail_contexts.clear()
 
     async def _run_gap_analysis(
         self,
@@ -642,6 +641,7 @@ class Orchestrator:
                 },
             )
 
+            detail_contexts: dict[str, str] = {}
             sem = asyncio.Semaphore(settings.detail_concurrency)
             detail_completed = 0
             total = len(nodes)
@@ -662,7 +662,7 @@ class Orchestrator:
                 detail_completed += 1
                 node["details"] = detail.model_dump()
                 if node["date"] >= "2025":
-                    self._detail_contexts[node["id"]] = search_context
+                    detail_contexts[node["id"]] = search_context
                 await session.push(
                     SSEEventType.NODE_DETAIL,
                     {
@@ -686,7 +686,7 @@ class Orchestrator:
             )
 
             # Step 3a: Hallucination filter
-            nodes = await self._filter_hallucinations(nodes)
+            nodes = await self._filter_hallucinations(nodes, detail_contexts)
 
             # Step 3b: Gap analysis + connections
             gap_result = await self._run_gap_analysis(nodes, proposal)

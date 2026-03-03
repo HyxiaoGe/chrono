@@ -25,21 +25,23 @@ import { MiniMap } from "./MiniMap";
 
 export function ChronoApp() {
   const [locale, toggleLocale] = useLocale();
-  const [phase, setPhase] = useState<AppPhase>("input");
+  const [initialParams] = useState(() => {
+    if (typeof window === "undefined") return { topic: null as string | null, session: null as string | null };
+    const params = new URLSearchParams(window.location.search);
+    return { topic: params.get("topic"), session: params.get("session") };
+  });
+
+  const hasSession = initialParams.session !== null;
+  const [phase, setPhase] = useState<AppPhase>(hasSession ? "research" : "input");
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const [autoTopic] = useState(() => {
-    if (typeof window === "undefined") return null;
-    return new URLSearchParams(window.location.search).get("topic");
-  });
-
   // Proposal phase
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(initialParams.session);
   const [proposal, setProposal] = useState<ResearchProposal | null>(null);
 
   // Research phase
-  const [streamSessionId, setStreamSessionId] = useState<string | null>(null);
+  const [streamSessionId, setStreamSessionId] = useState<string | null>(initialParams.session);
   const [nodes, setNodes] = useState<TimelineNode[]>([]);
   const [progressMessage, setProgressMessage] = useState("");
   const [synthesisData, setSynthesisData] = useState<SynthesisData | null>(null);
@@ -76,8 +78,11 @@ export function ChronoApp() {
   }
 
   function handleConfirm() {
-    if (proposal) {
-      window.history.replaceState(null, "", `/app?topic=${encodeURIComponent(proposal.topic)}`);
+    if (proposal && sessionId) {
+      window.history.replaceState(
+        null, "",
+        `/app?topic=${encodeURIComponent(proposal.topic)}&session=${sessionId}`,
+      );
     }
     setPhase("research");
     setStreamSessionId(sessionId);
@@ -92,13 +97,13 @@ export function ChronoApp() {
 
   const didAutoSearch = useRef(false);
   useEffect(() => {
-    if (!autoTopic || didAutoSearch.current) return;
+    if (hasSession || !initialParams.topic || didAutoSearch.current) return;
     didAutoSearch.current = true;
 
     fetch("/api/research", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ topic: autoTopic, language: "auto" }),
+      body: JSON.stringify({ topic: initialParams.topic, language: "auto" }),
     })
       .then((res) => {
         if (!res.ok) throw new Error();
@@ -112,7 +117,7 @@ export function ChronoApp() {
       .catch(() => {
         setError("Service temporarily unavailable. Please try again.");
       });
-  }, [autoTopic]);
+  }, [hasSession, initialParams.topic]);
 
   const handleNavigateToNode = useCallback((targetId: string) => {
     setSelectedNodeId(null);
@@ -179,6 +184,22 @@ export function ChronoApp() {
       setCompleteData(data);
       setProgressMessage("");
     }, []),
+
+    onConnectionError: useCallback(() => {
+      const topic = initialParams.topic;
+      window.history.replaceState(
+        null, "",
+        topic ? `/app?topic=${encodeURIComponent(topic)}` : "/app",
+      );
+      setPhase("input");
+      setStreamSessionId(null);
+      setSessionId(null);
+      setNodes([]);
+      setProgressMessage("");
+      setSynthesisData(null);
+      setCompleteData(null);
+      setError("Session expired. Please search again.");
+    }, [initialParams.topic]),
   });
 
   const language = proposal?.language ?? "en";
@@ -198,7 +219,7 @@ export function ChronoApp() {
     <AppShell
       locale={locale}
       onToggleLocale={toggleLocale}
-      topic={proposal?.topic}
+      topic={proposal?.topic ?? initialParams.topic ?? undefined}
       showResearchBar={phase === "research"}
       activeYear={activeYear}
       activePhase={activePhase}
