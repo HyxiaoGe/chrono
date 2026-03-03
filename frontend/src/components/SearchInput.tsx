@@ -24,14 +24,14 @@ export function SearchInput({ onSearch, isPending, error, onSelectTopic, locale 
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-3.5rem)] flex-col items-center pt-[15vh] px-4">
+    <div className="flex min-h-[calc(100vh-3.5rem)] flex-col items-center px-4 sm:px-6 pt-[12vh] pb-16">
       <h1 className="mb-2 text-chrono-hero font-bold tracking-wider text-chrono-accent">
         {t.title}
       </h1>
       <p className="mb-10 text-chrono-text-muted">
         {t.subtitle}
       </p>
-      <form onSubmit={handleSubmit} className="flex w-full max-w-md gap-3">
+      <form onSubmit={handleSubmit} className="flex w-full max-w-xl gap-3">
         <input
           type="text"
           value={topic}
@@ -56,7 +56,7 @@ export function SearchInput({ onSearch, isPending, error, onSelectTopic, locale 
       {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
 
       {/* Suggested topics */}
-      <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+      <div className="mt-5 flex flex-wrap items-center justify-center gap-2 max-w-xl">
         <span className="text-chrono-caption text-chrono-text-muted">
           {t.tryLabel}:
         </span>
