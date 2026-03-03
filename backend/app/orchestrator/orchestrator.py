@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import logging
 import re
 from datetime import date
@@ -29,6 +30,24 @@ from app.services.llm import resolve_model
 from app.services.tavily import TavilyService
 
 logger = logging.getLogger(__name__)
+
+
+def _build_detail_pool() -> list:
+    if not settings.detail_model_pool:
+        return []
+    pool = []
+    for s in settings.detail_model_pool.split(","):
+        s = s.strip()
+        if not s:
+            continue
+        try:
+            pool.append(resolve_model(s))
+        except ValueError:
+            logger.warning("Skipping invalid pool model: %s", s)
+    return pool
+
+
+_detail_pool = _build_detail_pool()
 
 _PROGRESS_MESSAGES: dict[str, dict[str, str]] = {
     "skeleton": {
@@ -645,16 +664,22 @@ class Orchestrator:
             sem = asyncio.Semaphore(settings.detail_concurrency)
             detail_completed = 0
             total = len(nodes)
+            pool_counter = 0
 
             async def _enrich_node(node: dict) -> None:
-                nonlocal detail_completed
+                nonlocal detail_completed, pool_counter
                 async with sem:
+                    model_override = None
+                    if _detail_pool:
+                        model_override = _detail_pool[pool_counter % len(_detail_pool)]
+                        pool_counter += 1
                     try:
                         detail, search_context = await run_detail_agent(
                             node=node,
                             topic=proposal.topic,
                             language=proposal.language,
                             tavily=self.tavily,
+                            model_override=model_override,
                         )
                     except Exception:
                         logger.warning("Detail agent failed for node %s", node["id"])
@@ -675,6 +700,9 @@ class Orchestrator:
                 for node in nodes:
                     tg.create_task(_enrich_node(node))
 
+            # Checkpoint: snapshot Phase 2 results
+            phase2_snapshot = copy.deepcopy(nodes)
+
             # --- Phase 3: Gap Analysis ---
             await session.push(
                 SSEEventType.PROGRESS,
@@ -685,40 +713,47 @@ class Orchestrator:
                 },
             )
 
-            # Step 3a: Hallucination filter
-            nodes = await self._filter_hallucinations(nodes, detail_contexts)
+            gap_connections: list = []
+            try:
+                # Step 3a: Hallucination filter
+                nodes = await self._filter_hallucinations(nodes, detail_contexts)
 
-            # Step 3b: Gap analysis + connections
-            gap_result = await self._run_gap_analysis(nodes, proposal)
-            gap_connections = gap_result.connections
+                # Step 3b: Gap analysis + connections
+                gap_result = await self._run_gap_analysis(nodes, proposal)
+                gap_connections = gap_result.connections
 
-            # Step 3c: Integrate gap nodes + push updated skeleton
-            new_nodes: list[dict] = []
-            if gap_result.gap_nodes:
-                max_id = max(int(n["id"].split("_")[1]) for n in nodes)
-                next_id = max_id + 1
-                for gap_node in gap_result.gap_nodes:
-                    node_dict = {
-                        "id": f"ms_{next_id:03d}",
-                        **gap_node.model_dump(),
-                        "status": "skeleton",
-                        "is_gap_node": True,
-                    }
-                    next_id += 1
-                    new_nodes.append(node_dict)
-                nodes.extend(new_nodes)
-                nodes.sort(key=lambda n: n["date"])
+                # Step 3c: Integrate gap nodes + push updated skeleton
+                new_nodes: list[dict] = []
+                if gap_result.gap_nodes:
+                    max_id = max(int(n["id"].split("_")[1]) for n in nodes)
+                    next_id = max_id + 1
+                    for gap_node in gap_result.gap_nodes:
+                        node_dict = {
+                            "id": f"ms_{next_id:03d}",
+                            **gap_node.model_dump(),
+                            "status": "skeleton",
+                            "is_gap_node": True,
+                        }
+                        next_id += 1
+                        new_nodes.append(node_dict)
+                    nodes.extend(new_nodes)
+                    nodes.sort(key=lambda n: n["date"])
 
-            # Always push updated skeleton (reflects filtered + gap nodes)
-            await session.push(SSEEventType.SKELETON, {"nodes": nodes})
+                # Always push updated skeleton (reflects filtered + gap nodes)
+                await session.push(SSEEventType.SKELETON, {"nodes": nodes})
 
-            # Enrich gap nodes
-            if new_nodes:
-                async with asyncio.TaskGroup() as tg:
-                    for node in new_nodes:
-                        tg.create_task(_enrich_node(node))
+                # Enrich gap nodes
+                if new_nodes:
+                    async with asyncio.TaskGroup() as tg:
+                        for node in new_nodes:
+                            tg.create_task(_enrich_node(node))
 
-            total = len(nodes)
+                total = len(nodes)
+            except Exception:
+                logger.warning("Phase 3 failed, falling back to Phase 2 snapshot")
+                nodes = phase2_snapshot
+                total = len(nodes)
+                await session.push(SSEEventType.SKELETON, {"nodes": nodes})
 
             # --- Phase 4: Synthesis ---
             await session.push(

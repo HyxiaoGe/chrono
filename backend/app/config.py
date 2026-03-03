@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     gap_analysis_model: str = "openrouter:anthropic/claude-opus-4.6"
     synthesizer_model: str = "openrouter:anthropic/claude-opus-4.6"
 
+    detail_model_pool: str = ""
     detail_concurrency: int = 4
 
     model_config = {"env_file": ".env"}

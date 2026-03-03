@@ -1,6 +1,7 @@
 import logging
 
 from pydantic_ai import Agent, UsageLimits
+from pydantic_ai.models import Model
 
 from app.config import settings
 from app.models.research import NodeDetail
@@ -9,11 +10,26 @@ from app.services.tavily import TavilyService
 
 logger = logging.getLogger(__name__)
 
-_ALLOWED_TAGS = frozenset({
-    "product_launch", "hardware", "software", "business", "policy", "milestone",
-    "innovation", "partnership", "acquisition", "regulation", "cultural_shift",
-    "scientific", "military", "diplomatic", "security", "infrastructure",
-})
+_ALLOWED_TAGS = frozenset(
+    {
+        "product_launch",
+        "hardware",
+        "software",
+        "business",
+        "policy",
+        "milestone",
+        "innovation",
+        "partnership",
+        "acquisition",
+        "regulation",
+        "cultural_shift",
+        "scientific",
+        "military",
+        "diplomatic",
+        "security",
+        "infrastructure",
+    }
+)
 
 detail_agent = Agent(
     resolve_model(settings.detail_model),
@@ -74,6 +90,7 @@ async def run_detail_agent(
     topic: str,
     language: str,
     tavily: TavilyService,
+    model_override: Model | None = None,
 ) -> tuple[NodeDetail, str]:
     """Returns (detail, search_context)."""
     query = f"{topic} {node['title']} {node['date'][:4]}"
@@ -94,6 +111,7 @@ async def run_detail_agent(
     )
     result = await detail_agent.run(
         prompt,
+        model=model_override,
         usage_limits=UsageLimits(request_limit=4),
     )
     output = result.output

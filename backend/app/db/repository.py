@@ -8,10 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import ResearchRow, TimelineNodeRow
 from app.models.research import ResearchProposal
+from app.utils.topic import normalize_topic
 
 
 async def get_research_by_topic(session: AsyncSession, topic: str) -> ResearchRow | None:
-    stmt = select(ResearchRow).where(ResearchRow.topic == topic)
+    normalized = normalize_topic(topic)
+    stmt = select(ResearchRow).where(ResearchRow.topic_normalized == normalized)
     result = await session.execute(stmt)
     return result.scalar_one_or_none()
 
@@ -50,6 +52,7 @@ async def save_research(
     existing = await get_research_by_topic(session, proposal.topic)
 
     if existing:
+        existing.topic_normalized = normalize_topic(proposal.topic)
         existing.topic_type = proposal.topic_type.value
         existing.language = proposal.language
         existing.complexity_level = proposal.complexity.level.value
@@ -67,6 +70,7 @@ async def save_research(
     else:
         research = ResearchRow(
             topic=proposal.topic,
+            topic_normalized=normalize_topic(proposal.topic),
             topic_type=proposal.topic_type.value,
             language=proposal.language,
             complexity_level=proposal.complexity.level.value,

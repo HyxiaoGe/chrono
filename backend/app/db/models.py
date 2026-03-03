@@ -16,7 +16,8 @@ class ResearchRow(Base):
     __tablename__ = "researches"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    topic: Mapped[str] = mapped_column(Text, unique=True, index=True)
+    topic: Mapped[str] = mapped_column(Text, index=True)
+    topic_normalized: Mapped[str] = mapped_column(String(512), unique=True, index=True, default="")
     topic_type: Mapped[str] = mapped_column(String(32))
     language: Mapped[str] = mapped_column(String(16))
     complexity_level: Mapped[str] = mapped_column(String(16))
