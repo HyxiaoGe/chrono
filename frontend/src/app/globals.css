@@ -19,6 +19,10 @@
   --color-chrono-enabled: #5090d0;
   --color-chrono-inspired: #50b080;
   --color-chrono-responded: #9070c0;
+  --color-chrono-level-light: #5090d0;
+  --color-chrono-level-medium: #50b080;
+  --color-chrono-level-deep: #d4a050;
+  --color-chrono-level-epic: #e07050;
 
   /* --- Font sizes --- */
   --font-size-chrono-hero: 3.5rem;
