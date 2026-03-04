@@ -236,6 +236,7 @@ export function ChronoApp() {
           proposal={proposal}
           onConfirm={handleConfirm}
           onCancel={handleCancel}
+          locale={locale}
         />
       )}
       {phase === "research" && (

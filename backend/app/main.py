@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from sse_starlette import EventSourceResponse
 
+from app.data.recommended import RECOMMENDED_TOPICS
 from app.db.database import async_session_factory, engine
 from app.db.replay import replay_research
 from app.db.repository import get_research_by_topic, list_researches
@@ -56,6 +57,11 @@ async def list_researches_endpoint():
         }
         for row in rows
     ]
+
+
+@app.get("/api/topics/recommended")
+async def get_recommended_topics() -> list[dict]:
+    return RECOMMENDED_TOPICS
 
 
 @app.post(

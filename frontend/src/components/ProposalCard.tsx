@@ -1,11 +1,14 @@
 "use client";
 
 import type { ResearchProposal } from "@/types";
+import type { Locale } from "@/data/landing";
+import { messages } from "@/data/landing";
 
 interface Props {
   proposal: ResearchProposal;
   onConfirm: () => void;
   onCancel: () => void;
+  locale: Locale;
 }
 
 const LEVEL_DOTS: Record<string, number> = {
@@ -15,9 +18,18 @@ const LEVEL_DOTS: Record<string, number> = {
   epic: 4,
 };
 
-export function ProposalCard({ proposal, onConfirm, onCancel }: Props) {
+const LEVEL_DOT_COLOR: Record<string, string> = {
+  light: "bg-chrono-level-light",
+  medium: "bg-chrono-level-medium",
+  deep: "bg-chrono-level-deep",
+  epic: "bg-chrono-level-epic",
+};
+
+export function ProposalCard({ proposal, onConfirm, onCancel, locale }: Props) {
   const { user_facing, complexity, research_threads } = proposal;
   const activeDots = LEVEL_DOTS[complexity.level] ?? 1;
+  const dotColor = LEVEL_DOT_COLOR[complexity.level] ?? "bg-chrono-accent";
+  const t = messages[locale].app;
 
   return (
     <div className="flex min-h-[calc(100vh-3.5rem)] flex-col items-center justify-center px-4">
@@ -31,7 +43,7 @@ export function ProposalCard({ proposal, onConfirm, onCancel }: Props) {
               <div
                 key={i}
                 className={`h-2 w-2 rounded-full ${
-                  i < activeDots ? "bg-chrono-accent" : "bg-chrono-border"
+                  i < activeDots ? dotColor : "bg-chrono-border"
                 }`}
               />
             ))}
@@ -43,7 +55,7 @@ export function ProposalCard({ proposal, onConfirm, onCancel }: Props) {
 
         <div className="mt-6">
           <h3 className="text-chrono-tiny font-medium uppercase tracking-wider text-chrono-text-muted">
-            Research Dimensions
+            {t.researchDimensions}
           </h3>
           <div className="mt-2 flex flex-wrap gap-2">
             {research_threads.map((thread) => (
@@ -70,14 +82,14 @@ export function ProposalCard({ proposal, onConfirm, onCancel }: Props) {
             className="flex-1 rounded-lg bg-chrono-text py-3 font-medium text-chrono-bg
                        hover:bg-chrono-text/90 transition-colors cursor-pointer"
           >
-            Start Research
+            {t.startResearch}
           </button>
           <button
             onClick={onCancel}
             className="rounded-lg border border-chrono-border px-6 py-3 text-chrono-text-muted
                        hover:border-chrono-border-active hover:text-chrono-text-secondary transition-colors cursor-pointer"
           >
-            Cancel
+            {t.cancel}
           </button>
         </div>
       </div>

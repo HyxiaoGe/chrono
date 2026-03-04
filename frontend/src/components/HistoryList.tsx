@@ -147,6 +147,7 @@ export function HistoryList({ onSelectTopic, locale }: Props) {
   const [items, setItems] = useState<ResearchSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const t = messages[locale].app;
 
   useEffect(() => {
@@ -165,7 +166,17 @@ export function HistoryList({ onSelectTopic, locale }: Props) {
       });
   }, []);
 
-  if (error || (!loading && items.length === 0)) return null;
+  if (error) return null;
+  if (!loading && items.length === 0) {
+    return (
+      <div className="w-full max-w-4xl mt-10">
+        <h2 className="text-chrono-caption text-chrono-text-muted mb-2 tracking-wide uppercase">
+          {t.recent}
+        </h2>
+        <p className="text-chrono-tiny text-chrono-text-muted/50">{t.noHistory}</p>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -210,14 +221,25 @@ export function HistoryList({ onSelectTopic, locale }: Props) {
     );
   }
 
+  const displayItems = expanded ? items : items.slice(0, 5);
+  const hasMore = items.length > 5;
+
   return (
     <div className="w-full max-w-4xl mt-10">
       <HistoryGroup
         title={t.recent}
-        items={items}
+        items={displayItems}
         onSelectTopic={onSelectTopic}
         locale={locale}
       />
+      {hasMore && !expanded && (
+        <button
+          onClick={() => setExpanded(true)}
+          className="mt-2 text-chrono-caption text-chrono-text-muted hover:text-chrono-accent transition-colors cursor-pointer"
+        >
+          {t.viewAll} ({items.length})
+        </button>
+      )}
     </div>
   );
 }

@@ -63,8 +63,12 @@ interface LandingMessages {
     recent: string;
     ago: string;
     nodes: string;
-    tryLabel: string;
-    suggestedTopics: string[];
+    explore: string;
+    noHistory: string;
+    viewAll: string;
+    researchDimensions: string;
+    startResearch: string;
+    cancel: string;
     groupTech: string;
     groupHistory: string;
   };
@@ -139,8 +143,12 @@ export const messages: Record<Locale, LandingMessages> = {
       recent: "Recent",
       ago: "ago",
       nodes: "nodes",
-      tryLabel: "Try",
-      suggestedTopics: ["iPhone", "Bitcoin", "World War II", "Artificial Intelligence", "SpaceX", "Tesla", "Cold War", "React"],
+      explore: "Explore topics",
+      noHistory: "No research history yet",
+      viewAll: "View all",
+      researchDimensions: "Research Dimensions",
+      startResearch: "Start Research",
+      cancel: "Cancel",
       groupTech: "Products & Tech",
       groupHistory: "History & Culture",
     },
@@ -216,9 +224,13 @@ export const messages: Record<Locale, LandingMessages> = {
       recent: "\u6700\u8fd1\u7684\u8c03\u7814",
       ago: "\u524d",
       nodes: "\u4e2a\u8282\u70b9",
-      tryLabel: "\u8bd5\u8bd5",
-      suggestedTopics: ["iPhone", "\u6bd4\u7279\u5e01", "\u4e8c\u6218", "\u4eba\u5de5\u667a\u80fd", "SpaceX", "\u5fae\u4fe1", "\u51b7\u6218", "\u91cf\u5b50\u8ba1\u7b97"],
-      groupTech: "\u4ea7\u54c1\u4e0e\u6280\u672f",
+      explore: "探索主题",
+      noHistory: "暂无调研记录",
+      viewAll: "查看全部",
+      researchDimensions: "调研维度",
+      startResearch: "开始调研",
+      cancel: "取消",
+      groupTech: "产品与技术",
       groupHistory: "\u5386\u53f2\u4e0e\u6587\u5316",
     },
   },
