@@ -33,7 +33,7 @@ export function ProposalCard({ proposal, onConfirm, onCancel, locale }: Props) {
 
   return (
     <div className="flex min-h-[calc(100vh-3.5rem)] flex-col items-center justify-center px-4">
-      <div className="animate-slide-up w-full max-w-lg rounded-2xl border border-chrono-border bg-chrono-surface/80 p-8 backdrop-blur-sm">
+      <div className="animate-slide-up w-full max-w-xl rounded-2xl border border-chrono-border bg-chrono-surface/80 p-8 backdrop-blur-sm">
         <div className="flex items-center gap-3">
           <h2 className="text-chrono-title font-bold text-chrono-text">
             {user_facing.title}
@@ -48,6 +48,9 @@ export function ProposalCard({ proposal, onConfirm, onCancel, locale }: Props) {
               />
             ))}
           </div>
+          <span className="text-chrono-caption text-chrono-text-muted">
+            {complexity.time_span}
+          </span>
         </div>
         <p className="mt-2 text-chrono-body text-chrono-text-secondary">
           {user_facing.summary}
@@ -57,26 +60,42 @@ export function ProposalCard({ proposal, onConfirm, onCancel, locale }: Props) {
           <h3 className="text-chrono-tiny font-medium uppercase tracking-wider text-chrono-text-muted">
             {t.researchDimensions}
           </h3>
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="mt-3 space-y-2">
             {research_threads.map((thread) => (
-              <span
+              <div
                 key={thread.name}
-                className="rounded-full border border-chrono-border px-3 py-1 text-sm text-chrono-text-secondary"
-                style={{ opacity: 0.4 + thread.priority * 0.12 }}
+                className="flex items-start gap-3 rounded-lg bg-chrono-bg/50 px-3 py-2"
               >
-                {thread.name}
-              </span>
+                <div className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${
+                  thread.priority >= 4 ? "bg-chrono-accent" : "bg-chrono-text-muted/50"
+                }`} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-chrono-caption font-medium text-chrono-text-secondary">
+                      {thread.name}
+                    </span>
+                    <span className="shrink-0 text-chrono-tiny text-chrono-text-muted">
+                      ~{thread.estimated_nodes} {locale === "zh" ? "节点" : "nodes"}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-chrono-tiny text-chrono-text-muted line-clamp-1">
+                    {thread.description}
+                  </p>
+                </div>
+              </div>
             ))}
           </div>
         </div>
 
-        <div className="mt-6 flex gap-6 text-chrono-caption text-chrono-text-muted">
+        <div className="mt-5 flex items-center gap-2 text-chrono-caption text-chrono-text-muted">
           <span>{user_facing.duration_text}</span>
+          <span>·</span>
           <span>{user_facing.credits_text}</span>
-          <span>~{complexity.estimated_total_nodes} nodes</span>
+          <span>·</span>
+          <span>~{complexity.estimated_total_nodes} {locale === "zh" ? "个节点" : "nodes"}</span>
         </div>
 
-        <div className="mt-8 flex gap-3">
+        <div className="mt-6 flex gap-3">
           <button
             onClick={onConfirm}
             className="flex-1 rounded-lg bg-chrono-text py-3 font-medium text-chrono-bg

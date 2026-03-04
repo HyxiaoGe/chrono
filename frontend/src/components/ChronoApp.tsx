@@ -34,6 +34,18 @@ export function ChronoApp() {
   const [phase, setPhase] = useState<AppPhase>(hasSession ? "research" : "input");
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [transitioning, setTransitioning] = useState(false);
+
+  const TRANSITION_MS = 250;
+
+  function transitionTo(newPhase: AppPhase, setup?: () => void) {
+    setTransitioning(true);
+    setTimeout(() => {
+      setup?.();
+      setPhase(newPhase);
+      setTransitioning(false);
+    }, TRANSITION_MS);
+  }
 
   // Proposal phase
   const [sessionId, setSessionId] = useState<string | null>(initialParams.session);
@@ -67,9 +79,10 @@ export function ChronoApp() {
           return;
         }
         const data = await res.json();
-        setSessionId(data.session_id);
-        setProposal(data.proposal);
-        setPhase("proposal");
+        transitionTo("proposal", () => {
+          setSessionId(data.session_id);
+          setProposal(data.proposal);
+        });
       } catch {
         setError("Network error. Please check your connection.");
       }
@@ -77,21 +90,23 @@ export function ChronoApp() {
   }
 
   function handleConfirm() {
-    if (proposal && sessionId) {
-      window.history.replaceState(
-        null, "",
-        `/app?topic=${encodeURIComponent(proposal.topic)}&session=${sessionId}`,
-      );
-    }
-    setPhase("research");
-    setStreamSessionId(sessionId);
+    transitionTo("research", () => {
+      if (proposal && sessionId) {
+        window.history.replaceState(
+          null, "",
+          `/app?topic=${encodeURIComponent(proposal.topic)}&session=${sessionId}`,
+        );
+      }
+      setStreamSessionId(sessionId);
+    });
   }
 
   function handleCancel() {
-    window.history.replaceState(null, "", "/app");
-    setPhase("input");
-    setSessionId(null);
-    setProposal(null);
+    transitionTo("input", () => {
+      window.history.replaceState(null, "", "/app");
+      setSessionId(null);
+      setProposal(null);
+    });
   }
 
   const didAutoSearch = useRef(false);
@@ -109,9 +124,10 @@ export function ChronoApp() {
         return res.json();
       })
       .then((data) => {
-        setSessionId(data.session_id);
-        setProposal(data.proposal);
-        setPhase("proposal");
+        transitionTo("proposal", () => {
+          setSessionId(data.session_id);
+          setProposal(data.proposal);
+        });
       })
       .catch(() => {
         setError("Service temporarily unavailable. Please try again.");
@@ -223,24 +239,28 @@ export function ChronoApp() {
       activePhase={activePhase}
     >
       {phase === "input" && (
-        <SearchInput
-          onSearch={handleSearch}
-          isPending={isPending}
-          error={error}
-          onSelectTopic={handleSearch}
-          locale={locale}
-        />
+        <div className={transitioning ? "animate-fade-out" : ""}>
+          <SearchInput
+            onSearch={handleSearch}
+            isPending={isPending}
+            error={error}
+            onSelectTopic={handleSearch}
+            locale={locale}
+          />
+        </div>
       )}
       {phase === "proposal" && proposal && (
-        <ProposalCard
-          proposal={proposal}
-          onConfirm={handleConfirm}
-          onCancel={handleCancel}
-          locale={locale}
-        />
+        <div className={transitioning ? "animate-fade-out" : ""}>
+          <ProposalCard
+            proposal={proposal}
+            onConfirm={handleConfirm}
+            onCancel={handleCancel}
+            locale={locale}
+          />
+        </div>
       )}
       {phase === "research" && (
-        <>
+        <div className={transitioning ? "animate-fade-out" : ""}>
           <Timeline
             nodes={nodes}
             progressMessage={progressMessage}
@@ -268,7 +288,7 @@ export function ChronoApp() {
             onClose={() => setSelectedNodeId(null)}
             onNavigateToNode={handleNavigateToNode}
           />
-        </>
+        </div>
       )}
     </AppShell>
   );

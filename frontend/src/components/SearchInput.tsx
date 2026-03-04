@@ -25,7 +25,7 @@ export function SearchInput({ onSearch, isPending, error, onSelectTopic, locale 
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-3.5rem)] flex-col items-center px-4 sm:px-6 pt-[8vh] pb-16">
+    <div className="animate-fade-in flex min-h-[calc(100vh-3.5rem)] flex-col items-center px-4 sm:px-6 pt-[8vh] pb-16">
       <h1 className="mb-2 text-chrono-hero font-bold tracking-wider text-chrono-accent">
         {t.title}
       </h1>
