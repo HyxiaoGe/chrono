@@ -10,6 +10,7 @@ interface Topic {
   subtitle: Record<string, string>;
   complexity: string;
   estimated_nodes: number;
+  cached?: boolean;
 }
 
 interface Category {
@@ -22,6 +23,7 @@ interface Category {
 interface Props {
   onSelectTopic: (topic: string) => void;
   locale: Locale;
+  disabled?: boolean;
 }
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -45,7 +47,7 @@ const LEVEL_BORDER: Record<string, string> = {
   epic: "border-l-chrono-level-epic",
 };
 
-export function RecommendedTopics({ onSelectTopic, locale }: Props) {
+export function RecommendedTopics({ onSelectTopic, locale, disabled }: Props) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(0);
@@ -126,14 +128,23 @@ export function RecommendedTopics({ onSelectTopic, locale }: Props) {
         {active.topics.map((topic) => (
           <button
             key={topic.title[locale]}
-            onClick={() => onSelectTopic(topic.title[locale])}
+            onClick={() => {
+              if (disabled) return;
+              onSelectTopic(topic.title[locale]);
+            }}
             className={`rounded-lg border border-l-[3px] border-chrono-border/40 px-4 py-3 text-left
-                       hover:border-chrono-accent/60 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-chrono-accent/5
-                       transition-all duration-200 cursor-pointer
-                       ${LEVEL_BORDER[topic.complexity] || ""}`}
+                       transition-all duration-200
+                       ${LEVEL_BORDER[topic.complexity] || ""}
+                       ${disabled
+                         ? "opacity-50 cursor-not-allowed"
+                         : "cursor-pointer hover:border-chrono-accent/60 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-chrono-accent/5"
+                       }`}
           >
-            <div className="text-chrono-body text-chrono-text font-medium">
-              {topic.title[locale]}
+            <div className="flex items-center text-chrono-body text-chrono-text font-medium">
+              <span className="truncate">{topic.title[locale]}</span>
+              {topic.cached && (
+                <span className="ml-auto text-chrono-tiny text-chrono-accent/70">⚡</span>
+              )}
             </div>
             <p className="mt-1 text-chrono-tiny text-chrono-text-muted line-clamp-2">
               {topic.subtitle[locale]}

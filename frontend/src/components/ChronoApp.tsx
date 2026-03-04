@@ -26,6 +26,7 @@ import { MiniMap } from "./MiniMap";
 export function ChronoApp() {
   const [locale, toggleLocale] = useLocale();
   const [initialParams] = useState(() => {
+    if (typeof window === "undefined") return { topic: null as string | null, session: null as string | null };
     const params = new URLSearchParams(window.location.search);
     return { topic: params.get("topic"), session: params.get("session") };
   });
@@ -50,6 +51,7 @@ export function ChronoApp() {
   // Proposal phase
   const [sessionId, setSessionId] = useState<string | null>(initialParams.session);
   const [proposal, setProposal] = useState<ResearchProposal | null>(null);
+  const proposalCache = useRef<Map<string, { sessionId: string; proposal: ResearchProposal }>>(new Map());
 
   // Research phase
   const [streamSessionId, setStreamSessionId] = useState<string | null>(initialParams.session);
@@ -61,12 +63,28 @@ export function ChronoApp() {
   // Detail panel
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
+  // Search reset key
+  const [searchKey, setSearchKey] = useState(0);
+
   // Highlight (connection navigation)
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  function normalizeKey(topic: string): string {
+    return topic.trim().toLowerCase();
+  }
+
   function handleSearch(topic: string) {
     setError(null);
+
+    const cached = proposalCache.current.get(normalizeKey(topic));
+    if (cached) {
+      setSessionId(cached.sessionId);
+      setProposal(cached.proposal);
+      transitionTo("proposal");
+      return;
+    }
+
     startTransition(async () => {
       try {
         const res = await fetch("/api/research", {
@@ -79,10 +97,24 @@ export function ChronoApp() {
           return;
         }
         const data = await res.json();
-        transitionTo("proposal", () => {
-          setSessionId(data.session_id);
-          setProposal(data.proposal);
-        });
+        setSessionId(data.session_id);
+        setProposal(data.proposal);
+
+        if (data.cached) {
+          transitionTo("research", () => {
+            window.history.replaceState(
+              null, "",
+              `/app?topic=${encodeURIComponent(data.proposal.topic)}&session=${data.session_id}`,
+            );
+            setStreamSessionId(data.session_id);
+          });
+        } else {
+          proposalCache.current.set(normalizeKey(data.proposal.topic), {
+            sessionId: data.session_id,
+            proposal: data.proposal,
+          });
+          transitionTo("proposal");
+        }
       } catch {
         setError("Network error. Please check your connection.");
       }
@@ -96,6 +128,7 @@ export function ChronoApp() {
           null, "",
           `/app?topic=${encodeURIComponent(proposal.topic)}&session=${sessionId}`,
         );
+        proposalCache.current.delete(normalizeKey(proposal.topic));
       }
       setStreamSessionId(sessionId);
     });
@@ -106,6 +139,7 @@ export function ChronoApp() {
       window.history.replaceState(null, "", "/app");
       setSessionId(null);
       setProposal(null);
+      setSearchKey((k) => k + 1);
     });
   }
 
@@ -124,15 +158,47 @@ export function ChronoApp() {
         return res.json();
       })
       .then((data) => {
-        transitionTo("proposal", () => {
-          setSessionId(data.session_id);
-          setProposal(data.proposal);
-        });
+        setSessionId(data.session_id);
+        setProposal(data.proposal);
+
+        if (data.cached) {
+          transitionTo("research", () => {
+            window.history.replaceState(
+              null, "",
+              `/app?topic=${encodeURIComponent(data.proposal.topic)}&session=${data.session_id}`,
+            );
+            setStreamSessionId(data.session_id);
+          });
+        } else {
+          transitionTo("proposal");
+        }
       })
       .catch(() => {
         setError("Service temporarily unavailable. Please try again.");
       });
   }, [hasSession, initialParams.topic]);
+
+  function guardedSelectTopic(topic: string) {
+    if (isPending || transitioning) return;
+    handleSearch(topic);
+  }
+
+  function handleNewResearch() {
+    transitionTo("input", () => {
+      window.history.replaceState(null, "", "/app");
+      setSessionId(null);
+      setProposal(null);
+      setStreamSessionId(null);
+      setNodes([]);
+      setProgressMessage("");
+      setSynthesisData(null);
+      setCompleteData(null);
+      setSelectedNodeId(null);
+      setHighlightedNodeId(null);
+      setError(null);
+      setSearchKey((k) => k + 1);
+    });
+  }
 
   const handleNavigateToNode = useCallback((targetId: string) => {
     setSelectedNodeId(null);
@@ -237,14 +303,16 @@ export function ChronoApp() {
       showResearchBar={phase === "research"}
       activeYear={activeYear}
       activePhase={activePhase}
+      onNewResearch={handleNewResearch}
     >
       {phase === "input" && (
         <div className={transitioning ? "animate-fade-out" : ""}>
           <SearchInput
+            key={searchKey}
             onSearch={handleSearch}
-            isPending={isPending}
+            isPending={isPending || transitioning}
             error={error}
-            onSelectTopic={handleSearch}
+            onSelectTopic={guardedSelectTopic}
             locale={locale}
           />
         </div>

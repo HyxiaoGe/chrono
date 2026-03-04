@@ -73,6 +73,7 @@ class ResearchRequest(BaseModel):
 class ResearchProposalResponse(BaseModel):
     session_id: str
     proposal: ResearchProposal
+    cached: bool = False
 
 
 class ErrorResponse(BaseModel):

@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import logging
 import uuid
 from contextlib import asynccontextmanager
@@ -8,16 +9,19 @@ from sse_starlette import EventSourceResponse
 
 from app.data.recommended import RECOMMENDED_TOPICS
 from app.db.database import async_session_factory, engine
+from app.db.redis import cache_proposal, close_redis, get_cached_proposal
 from app.db.replay import replay_research
 from app.db.repository import get_research_by_topic, list_researches
 from app.models.research import (
     ErrorResponse,
+    ResearchProposal,
     ResearchProposalResponse,
     ResearchRequest,
 )
 from app.models.session import SessionManager, SessionStatus
 from app.orchestrator.orchestrator import Orchestrator
 from app.services.tavily import TavilyService
+from app.utils.topic import normalize_topic
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +29,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     yield
+    await close_redis()
     if engine is not None:
         await engine.dispose()
 
@@ -61,7 +66,21 @@ async def list_researches_endpoint():
 
 @app.get("/api/topics/recommended")
 async def get_recommended_topics() -> list[dict]:
-    return RECOMMENDED_TOPICS
+    result = copy.deepcopy(RECOMMENDED_TOPICS)
+    cached_set: set[str] = set()
+    if async_session_factory is not None:
+        try:
+            async with async_session_factory() as db:
+                rows = await list_researches(db)
+            cached_set = {normalize_topic(r.topic) for r in rows}
+        except Exception:
+            pass
+    for cat in result:
+        for topic in cat["topics"]:
+            en_key = normalize_topic(topic["title"].get("en", ""))
+            zh_key = normalize_topic(topic["title"].get("zh", ""))
+            topic["cached"] = en_key in cached_set or zh_key in cached_set
+    return result
 
 
 @app.post(
@@ -71,23 +90,38 @@ async def get_recommended_topics() -> list[dict]:
 )
 async def create_research(request: ResearchRequest) -> ResearchProposalResponse:
     session_id = str(uuid.uuid4())
+    normalized = normalize_topic(request.topic)
 
-    # Cache check
+    # Layer 1: DB cache (completed research — full replay)
     if async_session_factory is not None:
         try:
             async with async_session_factory() as db:
-                cached = await get_research_by_topic(db, request.topic)
-            if cached:
-                from app.models.research import ResearchProposal
-
-                proposal = ResearchProposal.model_validate(cached.proposal)
+                db_cached = await get_research_by_topic(db, request.topic)
+            if db_cached:
+                proposal = ResearchProposal.model_validate(db_cached.proposal)
                 session = session_manager.create(session_id, proposal)
-                session.cached_research_id = cached.id
-                logger.info("Cache hit for topic: %s", request.topic)
-                return ResearchProposalResponse(session_id=session_id, proposal=proposal)
+                session.cached_research_id = db_cached.id
+                logger.info("DB cache hit for topic: %s", request.topic)
+                return ResearchProposalResponse(
+                    session_id=session_id,
+                    proposal=proposal,
+                    cached=True,
+                )
         except Exception:
-            logger.warning("Cache lookup failed, falling back to fresh research")
+            logger.warning("DB cache lookup failed, falling back")
 
+    # Layer 2: Redis proposal cache (generated but not yet researched)
+    cached_dict = await get_cached_proposal(normalized)
+    if cached_dict is not None:
+        try:
+            proposal = ResearchProposal.model_validate(cached_dict)
+            logger.info("Redis proposal cache hit for topic: %s", request.topic)
+            session_manager.create(session_id, proposal)
+            return ResearchProposalResponse(session_id=session_id, proposal=proposal)
+        except Exception:
+            logger.warning("Redis proposal validation failed, falling back to LLM")
+
+    # Layer 3: Fresh LLM call
     try:
         proposal = await orchestrator.create_proposal(request)
     except Exception as exc:
@@ -99,6 +133,8 @@ async def create_research(request: ResearchRequest) -> ResearchProposalResponse:
                 message="Failed to generate research proposal. Please try again.",
             ).model_dump(),
         ) from exc
+
+    await cache_proposal(normalized, proposal.model_dump())
     session_manager.create(session_id, proposal)
     return ResearchProposalResponse(session_id=session_id, proposal=proposal)
 

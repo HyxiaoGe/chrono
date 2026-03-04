@@ -8,6 +8,7 @@ import { messages } from "@/data/landing";
 interface Props {
   onSelectTopic: (topic: string) => void;
   locale: Locale;
+  disabled?: boolean;
 }
 
 const LEVEL_COLORS: Record<string, string> = {
@@ -67,20 +68,25 @@ function HistoryRow({
   item,
   onSelectTopic,
   locale,
+  disabled,
 }: {
   item: ResearchSummary;
   onSelectTopic: (topic: string) => void;
   locale: Locale;
+  disabled?: boolean;
 }) {
   const t = messages[locale].app;
   const span = shortSpan(item.timeline_span);
 
   return (
     <button
-      onClick={() => onSelectTopic(item.topic)}
-      className={`group w-full text-left px-4 py-3 border-l-[3px] transition-colors cursor-pointer
-                  hover:bg-chrono-surface/80
-                  ${LEVEL_COLORS[item.complexity_level] || "border-l-chrono-border"}`}
+      onClick={() => {
+        if (disabled) return;
+        onSelectTopic(item.topic);
+      }}
+      className={`group w-full text-left px-4 py-3 border-l-[3px] transition-colors
+                  ${LEVEL_COLORS[item.complexity_level] || "border-l-chrono-border"}
+                  ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:bg-chrono-surface/80"}`}
     >
       <div className="flex items-center gap-3">
         <span className="text-chrono-body text-chrono-text font-semibold truncate min-w-0 flex-1">
@@ -118,11 +124,13 @@ function HistoryGroup({
   items,
   onSelectTopic,
   locale,
+  disabled,
 }: {
   title: string;
   items: ResearchSummary[];
   onSelectTopic: (topic: string) => void;
   locale: Locale;
+  disabled?: boolean;
 }) {
   return (
     <div>
@@ -136,6 +144,7 @@ function HistoryGroup({
             item={item}
             onSelectTopic={onSelectTopic}
             locale={locale}
+            disabled={disabled}
           />
         ))}
       </div>
@@ -143,7 +152,7 @@ function HistoryGroup({
   );
 }
 
-export function HistoryList({ onSelectTopic, locale }: Props) {
+export function HistoryList({ onSelectTopic, locale, disabled }: Props) {
   const [items, setItems] = useState<ResearchSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -207,6 +216,7 @@ export function HistoryList({ onSelectTopic, locale }: Props) {
             items={tech}
             onSelectTopic={onSelectTopic}
             locale={locale}
+            disabled={disabled}
           />
         )}
         {history.length > 0 && (
@@ -215,6 +225,7 @@ export function HistoryList({ onSelectTopic, locale }: Props) {
             items={history}
             onSelectTopic={onSelectTopic}
             locale={locale}
+            disabled={disabled}
           />
         )}
       </div>
@@ -231,6 +242,7 @@ export function HistoryList({ onSelectTopic, locale }: Props) {
         items={displayItems}
         onSelectTopic={onSelectTopic}
         locale={locale}
+        disabled={disabled}
       />
       {hasMore && !expanded && (
         <button

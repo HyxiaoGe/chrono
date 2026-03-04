@@ -56,9 +56,9 @@ export function SearchInput({ onSearch, isPending, error, onSelectTopic, locale 
       </form>
       {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
 
-      <RecommendedTopics onSelectTopic={onSelectTopic} locale={locale} />
+      <RecommendedTopics onSelectTopic={onSelectTopic} locale={locale} disabled={isPending} />
       <div className="w-full max-w-4xl mt-10 border-t border-chrono-border/30" />
-      <HistoryList onSelectTopic={onSelectTopic} locale={locale} />
+      <HistoryList onSelectTopic={onSelectTopic} locale={locale} disabled={isPending} />
     </div>
   );
 }

@@ -34,6 +34,7 @@ export interface ResearchProposal {
 export interface ResearchProposalResponse {
   session_id: string;
   proposal: ResearchProposal;
+  cached: boolean;
 }
 
 // --- SSE event data types ---
