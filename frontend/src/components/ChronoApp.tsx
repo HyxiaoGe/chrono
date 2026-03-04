@@ -26,7 +26,6 @@ import { MiniMap } from "./MiniMap";
 export function ChronoApp() {
   const [locale, toggleLocale] = useLocale();
   const [initialParams] = useState(() => {
-    if (typeof window === "undefined") return { topic: null as string | null, session: null as string | null };
     const params = new URLSearchParams(window.location.search);
     return { topic: params.get("topic"), session: params.get("session") };
   });
@@ -186,10 +185,9 @@ export function ChronoApp() {
     }, []),
 
     onConnectionError: useCallback(() => {
-      const topic = initialParams.topic;
       window.history.replaceState(
         null, "",
-        topic ? `/app?topic=${encodeURIComponent(topic)}` : "/app",
+        initialParams.topic ? `/app?topic=${encodeURIComponent(initialParams.topic)}` : "/app",
       );
       setPhase("input");
       setStreamSessionId(null);
