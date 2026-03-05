@@ -286,17 +286,29 @@ export function ChronoApp() {
     }, []),
 
     onSkeleton: useCallback(
-      ({ nodes: skeletonNodes }: { nodes: SkeletonNodeData[] }) => {
-        setNodes((prev) => {
-          const existingMap = new Map(prev.map((n) => [n.id, n]));
-          return skeletonNodes.map((n) => {
-            const existing = existingMap.get(n.id);
-            if (existing?.details) {
-              return { ...n, status: existing.status, details: existing.details };
-            }
-            return { ...n, status: "skeleton" as const };
+      ({ nodes: skeletonNodes, partial }: { nodes: SkeletonNodeData[]; partial?: boolean }) => {
+        if (partial) {
+          setNodes((prev) => {
+            const incoming = skeletonNodes.map((n) => ({
+              ...n,
+              status: "skeleton" as const,
+            }));
+            const merged = [...prev, ...incoming];
+            merged.sort((a, b) => a.date.localeCompare(b.date));
+            return merged;
           });
-        });
+        } else {
+          setNodes((prev) => {
+            const existingMap = new Map(prev.map((n) => [n.id, n]));
+            return skeletonNodes.map((n) => {
+              const existing = existingMap.get(n.id);
+              if (existing?.details) {
+                return { ...n, status: existing.status, details: existing.details };
+              }
+              return { ...n, status: "skeleton" as const };
+            });
+          });
+        }
       },
       [],
     ),

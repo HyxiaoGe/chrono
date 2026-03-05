@@ -72,6 +72,11 @@ _PROGRESS_MESSAGES: dict[str, dict[str, str]] = {
         "en": "Generating research summary...",
         "ja": "調査サマリーを生成中...",
     },
+    "skeleton_thread": {
+        "zh": "已发现 {count} 个事件：{thread}",
+        "en": "Found {count} events: {thread}",
+        "ja": "{count} 件のイベントを発見：{thread}",
+    },
 }
 
 _proposal_agent = Agent(
@@ -512,13 +517,18 @@ class Orchestrator:
             proposal = proposal.model_copy(update={"language": language})
         return proposal
 
-    async def _run_milestone_phase(self, proposal: ResearchProposal) -> list[dict]:
+    async def _run_milestone_phase(
+        self, proposal: ResearchProposal, session: ResearchSession
+    ) -> list[dict]:
         sem = asyncio.Semaphore(_MILESTONE_CONCURRENCY)
+        partial_counter = 0
 
         async def _run_thread(
             thread: ResearchThread,
             time_range: str = "",
+            phase_name: str = "",
         ) -> list[SkeletonNode]:
+            nonlocal partial_counter
             async with sem:
                 try:
                     milestone_result, urls = await run_milestone_agent(
@@ -532,6 +542,38 @@ class Orchestrator:
                     )
                     for node in milestone_result.nodes:
                         node.sources = urls
+
+                    # Push partial skeleton
+                    if milestone_result.nodes:
+                        partial_nodes = []
+                        for node in milestone_result.nodes:
+                            partial_counter += 1
+                            partial_nodes.append(
+                                {
+                                    "id": f"tmp_{partial_counter:03d}",
+                                    **node.model_dump(),
+                                    "status": "skeleton",
+                                    **({"phase_name": phase_name} if phase_name else {}),
+                                }
+                            )
+                        await session.push(
+                            SSEEventType.SKELETON,
+                            {"nodes": partial_nodes, "partial": True},
+                        )
+                        await session.push(
+                            SSEEventType.PROGRESS,
+                            {
+                                "phase": "skeleton",
+                                "message": _get_progress_message(
+                                    "skeleton_thread", proposal.language
+                                ).format(
+                                    count=len(milestone_result.nodes),
+                                    thread=thread.name,
+                                ),
+                                "percent": 0,
+                            },
+                        )
+
                     return milestone_result.nodes
                 except Exception:
                     logger.warning("Milestone agent failed for thread: %s", thread.name)
@@ -575,7 +617,8 @@ class Orchestrator:
             phase_nodes: list[SkeletonNode] = []
             async with asyncio.TaskGroup() as tg:
                 tasks = [
-                    tg.create_task(run_thread(thread, phase.time_range)) for thread in phase.threads
+                    tg.create_task(run_thread(thread, phase.time_range, phase.name))
+                    for thread in phase.threads
                 ]
             for task in tasks:
                 phase_nodes.extend(task.result())
@@ -702,9 +745,9 @@ class Orchestrator:
                 },
             )
 
-            nodes = await self._run_milestone_phase(proposal)
+            nodes = await self._run_milestone_phase(proposal, session)
 
-            await session.push(SSEEventType.SKELETON, {"nodes": nodes})
+            await session.push(SSEEventType.SKELETON, {"nodes": nodes, "partial": False})
 
             # --- Phase 2: Detail ---
             await session.push(

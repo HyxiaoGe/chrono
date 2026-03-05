@@ -11,7 +11,7 @@ import type {
 
 interface StreamCallbacks {
   onProgress?: (data: ProgressData) => void;
-  onSkeleton?: (data: { nodes: SkeletonNodeData[] }) => void;
+  onSkeleton?: (data: { nodes: SkeletonNodeData[]; partial?: boolean }) => void;
   onNodeDetail?: (data: NodeDetailEvent) => void;
   onSynthesis?: (data: SynthesisData) => void;
   onComplete?: (data: CompleteData) => void;
@@ -53,7 +53,7 @@ export function useResearchStream(
       }
 
       listen<ProgressData>("progress", (d) => cbRef.current.onProgress?.(d));
-      listen<{ nodes: SkeletonNodeData[] }>("skeleton", (d) =>
+      listen<{ nodes: SkeletonNodeData[]; partial?: boolean }>("skeleton", (d) =>
         cbRef.current.onSkeleton?.(d),
       );
       listen<NodeDetailEvent>("node_detail", (d) =>
