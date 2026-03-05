@@ -2,10 +2,11 @@
 
 import dynamic from "next/dynamic";
 
-const ChronoApp = dynamic(() => import("@/components/ChronoApp").then((m) => m.ChronoApp), {
-  ssr: false,
-});
+const SearchHome = dynamic(
+  () => import("@/components/SearchHome").then((m) => m.SearchHome),
+  { ssr: false },
+);
 
 export default function AppPage() {
-  return <ChronoApp />;
+  return <SearchHome />;
 }
