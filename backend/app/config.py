@@ -15,13 +15,13 @@ class Settings(BaseSettings):
     redis_url: str = ""
 
     # --- 模型分配（前缀决定路由，无前缀默认走 OpenRouter）---
-    orchestrator_model: str = "openrouter:anthropic/claude-opus-4.6"
+    orchestrator_model: str = "openrouter:google/gemini-3-flash-preview"
     milestone_model: str = "openrouter:deepseek/deepseek-chat"
     detail_model: str = "openrouter:deepseek/deepseek-chat"
     dedup_model: str = "openrouter:deepseek/deepseek-chat"
     hallucination_model: str = "openrouter:deepseek/deepseek-chat"
-    gap_analysis_model: str = "openrouter:anthropic/claude-opus-4.6"
-    synthesizer_model: str = "openrouter:anthropic/claude-opus-4.6"
+    gap_analysis_model: str = "openrouter:google/gemini-3-flash-preview"
+    synthesizer_model: str = "openrouter:anthropic/claude-sonnet-4-5"
 
     detail_model_pool: str = ""
     detail_concurrency: int = 4
