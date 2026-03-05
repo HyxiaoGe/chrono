@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   // Disable gzip to prevent SSE event buffering during development.
   // Production SSE will bypass the Next.js proxy entirely (browser → backend direct).
   compress: false,
+  experimental: {
+    proxyTimeout: 1000 * 120,
+  },
   async rewrites() {
     return [
       {

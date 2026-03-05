@@ -9,7 +9,14 @@ from sse_starlette import EventSourceResponse
 
 from app.data.recommended import RECOMMENDED_TOPICS
 from app.db.database import async_session_factory, engine
-from app.db.redis import cache_proposal, close_redis, get_cached_proposal
+from app.db.redis import (
+    cache_proposal,
+    close_redis,
+    get_cached_proposal,
+    get_session_data,
+    store_session,
+    update_session_status,
+)
 from app.db.replay import replay_research
 from app.db.repository import get_research_by_topic, list_researches
 from app.models.research import (
@@ -102,6 +109,7 @@ async def create_research(request: ResearchRequest) -> ResearchProposalResponse:
                 session = session_manager.create(session_id, proposal)
                 session.cached_research_id = db_cached.id
                 logger.info("DB cache hit for topic: %s", request.topic)
+                await store_session(session_id, proposal.model_dump(), "proposal_ready")
                 return ResearchProposalResponse(
                     session_id=session_id,
                     proposal=proposal,
@@ -117,6 +125,7 @@ async def create_research(request: ResearchRequest) -> ResearchProposalResponse:
             proposal = ResearchProposal.model_validate(cached_dict)
             logger.info("Redis proposal cache hit for topic: %s", request.topic)
             session_manager.create(session_id, proposal)
+            await store_session(session_id, proposal.model_dump(), "proposal_ready")
             return ResearchProposalResponse(session_id=session_id, proposal=proposal)
         except Exception:
             logger.warning("Redis proposal validation failed, falling back to LLM")
@@ -136,12 +145,55 @@ async def create_research(request: ResearchRequest) -> ResearchProposalResponse:
 
     await cache_proposal(normalized, proposal.model_dump())
     session_manager.create(session_id, proposal)
+    await store_session(session_id, proposal.model_dump(), "proposal_ready")
     return ResearchProposalResponse(session_id=session_id, proposal=proposal)
+
+
+@app.get("/api/research/{session_id}/status")
+async def get_session_status(session_id: str):
+    # Layer 1: in-memory
+    session = session_manager.get(session_id)
+    if session is not None:
+        return {
+            "status": session.status.value,
+            "proposal": session.proposal.model_dump(),
+        }
+
+    # Layer 2: Redis
+    redis_data = await get_session_data(session_id)
+    if redis_data is not None:
+        return {
+            "status": redis_data["status"],
+            "proposal": redis_data["proposal"],
+        }
+
+    raise HTTPException(status_code=404, detail="Session not found")
 
 
 @app.get("/api/research/{session_id}/stream")
 async def stream_research(session_id: str, request: Request) -> EventSourceResponse:
     session = session_manager.get(session_id)
+
+    # Not in memory — try reconstructing from Redis
+    if session is None:
+        redis_data = await get_session_data(session_id)
+        if redis_data is not None:
+            try:
+                proposal = ResearchProposal.model_validate(redis_data["proposal"])
+                session = session_manager.create(session_id, proposal)
+                logger.info("Reconstructed session %s from Redis", session_id)
+
+                if async_session_factory is not None:
+                    try:
+                        async with async_session_factory() as db:
+                            cached = await get_research_by_topic(db, proposal.topic)
+                        if cached:
+                            session.cached_research_id = cached.id
+                    except Exception:
+                        pass
+            except Exception:
+                logger.warning("Failed to reconstruct session from Redis", exc_info=True)
+
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found")
 
@@ -150,6 +202,7 @@ async def stream_research(session_id: str, request: Request) -> EventSourceRespo
 
     if session.status == SessionStatus.PROPOSAL_READY:
         # First connect — start execution
+        await update_session_status(session_id, "executing")
         if session.cached_research_id is not None:
             session.task = asyncio.create_task(replay_research(session, session.cached_research_id))
         else:

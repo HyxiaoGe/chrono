@@ -6,6 +6,7 @@ from sqlalchemy import select
 
 from app.db.database import async_session_factory
 from app.db.models import ResearchRow
+from app.db.redis import update_session_status
 from app.db.repository import get_nodes_for_research
 from app.models.research import SSEEventType
 from app.models.session import ResearchSession, SessionStatus
@@ -62,4 +63,5 @@ async def replay_research(session: ResearchSession, research_id: uuid.UUID) -> N
         },
     )
     session.status = SessionStatus.COMPLETED
+    await update_session_status(session.session_id, "completed")
     await session.close()

@@ -23,6 +23,36 @@ import { Timeline } from "./Timeline";
 import { DetailPanel } from "./DetailPanel";
 import { MiniMap } from "./MiniMap";
 
+const ACTIVE_SESSION_KEY = "chrono-active-session";
+
+interface ActiveSession {
+  sessionId: string;
+  topic: string;
+}
+
+function getActiveSession(): ActiveSession | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(ACTIVE_SESSION_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function setActiveSession(session: ActiveSession): void {
+  try {
+    localStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(session));
+  } catch { /* quota exceeded or storage unavailable */ }
+}
+
+function clearActiveSession(): void {
+  try {
+    localStorage.removeItem(ACTIVE_SESSION_KEY);
+  } catch { /* storage unavailable */ }
+}
+
 export function ChronoApp() {
   const [locale, toggleLocale] = useLocale();
   const [initialParams] = useState(() => {
@@ -31,8 +61,8 @@ export function ChronoApp() {
     return { topic: params.get("topic"), session: params.get("session") };
   });
 
-  const hasSession = initialParams.session !== null;
-  const [phase, setPhase] = useState<AppPhase>(hasSession ? "research" : "input");
+  const [phase, setPhase] = useState<AppPhase>("input");
+  const [initializing, setInitializing] = useState(true);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [transitioning, setTransitioning] = useState(false);
@@ -49,12 +79,12 @@ export function ChronoApp() {
   }
 
   // Proposal phase
-  const [sessionId, setSessionId] = useState<string | null>(initialParams.session);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [proposal, setProposal] = useState<ResearchProposal | null>(null);
   const proposalCache = useRef<Map<string, { sessionId: string; proposal: ResearchProposal }>>(new Map());
 
   // Research phase
-  const [streamSessionId, setStreamSessionId] = useState<string | null>(initialParams.session);
+  const [streamSessionId, setStreamSessionId] = useState<string | null>(null);
   const [nodes, setNodes] = useState<TimelineNode[]>([]);
   const [progressMessage, setProgressMessage] = useState("");
   const [synthesisData, setSynthesisData] = useState<SynthesisData | null>(null);
@@ -93,19 +123,27 @@ export function ChronoApp() {
           body: JSON.stringify({ topic, language: "auto" }),
         });
         if (!res.ok) {
-          setError("Service temporarily unavailable. Please try again.");
+          let detail = `HTTP ${res.status}`;
+          try {
+            const body = await res.json();
+            detail = body?.detail?.message ?? body?.detail ?? detail;
+          } catch { /* no json body */ }
+          console.error("[Chrono] POST /api/research failed:", res.status, detail);
+          setError(detail);
           return;
         }
         const data = await res.json();
         setSessionId(data.session_id);
         setProposal(data.proposal);
 
+        window.history.replaceState(
+          null, "",
+          `/app?topic=${encodeURIComponent(data.proposal.topic)}&session=${data.session_id}`,
+        );
+
         if (data.cached) {
+          setActiveSession({ sessionId: data.session_id, topic: data.proposal.topic });
           transitionTo("research", () => {
-            window.history.replaceState(
-              null, "",
-              `/app?topic=${encodeURIComponent(data.proposal.topic)}&session=${data.session_id}`,
-            );
             setStreamSessionId(data.session_id);
           });
         } else {
@@ -115,7 +153,8 @@ export function ChronoApp() {
           });
           transitionTo("proposal");
         }
-      } catch {
+      } catch (err) {
+        console.error("[Chrono] POST /api/research error:", err);
         setError("Network error. Please check your connection.");
       }
     });
@@ -129,6 +168,7 @@ export function ChronoApp() {
           `/app?topic=${encodeURIComponent(proposal.topic)}&session=${sessionId}`,
         );
         proposalCache.current.delete(normalizeKey(proposal.topic));
+        setActiveSession({ sessionId, topic: proposal.topic });
       }
       setStreamSessionId(sessionId);
     });
@@ -143,40 +183,58 @@ export function ChronoApp() {
     });
   }
 
-  const didAutoSearch = useRef(false);
+  const didInit = useRef(false);
   useEffect(() => {
-    if (hasSession || !initialParams.topic || didAutoSearch.current) return;
-    didAutoSearch.current = true;
+    if (didInit.current) return;
+    didInit.current = true;
 
-    fetch("/api/research", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ topic: initialParams.topic, language: "auto" }),
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error();
-        return res.json();
-      })
-      .then((data) => {
-        setSessionId(data.session_id);
-        setProposal(data.proposal);
+    const urlSession = initialParams.session;
+    const active = getActiveSession();
+    const restoreSessionId = urlSession ?? active?.sessionId ?? null;
 
-        if (data.cached) {
-          transitionTo("research", () => {
-            window.history.replaceState(
-              null, "",
-              `/app?topic=${encodeURIComponent(data.proposal.topic)}&session=${data.session_id}`,
-            );
-            setStreamSessionId(data.session_id);
-          });
-        } else {
-          transitionTo("proposal");
-        }
-      })
-      .catch(() => {
-        setError("Service temporarily unavailable. Please try again.");
-      });
-  }, [hasSession, initialParams.topic]);
+    if (restoreSessionId) {
+      fetch(`/api/research/${restoreSessionId}/status`)
+        .then((res) => {
+          if (!res.ok) throw new Error("not_found");
+          return res.json();
+        })
+        .then((data: { status: string; proposal: ResearchProposal }) => {
+          setSessionId(restoreSessionId);
+          setProposal(data.proposal);
+
+          window.history.replaceState(
+            null, "",
+            `/app?topic=${encodeURIComponent(data.proposal.topic)}&session=${restoreSessionId}`,
+          );
+
+          if (data.status === "proposal_ready") {
+            setPhase("proposal");
+          } else if (data.status === "completed" || data.status === "executing") {
+            setPhase("research");
+            setStreamSessionId(restoreSessionId);
+          } else if (data.status === "failed") {
+            clearActiveSession();
+            window.history.replaceState(null, "", "/app");
+            setPhase("input");
+            setError("Previous research failed. Please try again.");
+          }
+          setInitializing(false);
+        })
+        .catch(() => {
+          clearActiveSession();
+          window.history.replaceState(null, "", "/app");
+          setPhase("input");
+          setInitializing(false);
+        });
+      return;
+    }
+
+    setInitializing(false);
+    if (initialParams.topic) {
+      handleSearch(initialParams.topic);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function guardedSelectTopic(topic: string) {
     if (isPending || transitioning) return;
@@ -184,6 +242,7 @@ export function ChronoApp() {
   }
 
   function handleNewResearch() {
+    clearActiveSession();
     transitionTo("input", () => {
       window.history.replaceState(null, "", "/app");
       setSessionId(null);
@@ -264,13 +323,17 @@ export function ChronoApp() {
     onComplete: useCallback((data: CompleteData) => {
       setCompleteData(data);
       setProgressMessage("");
+      clearActiveSession();
+    }, []),
+
+    onResearchError: useCallback((data: { error: string; message: string }) => {
+      setError(data.message);
+      clearActiveSession();
     }, []),
 
     onConnectionError: useCallback(() => {
-      window.history.replaceState(
-        null, "",
-        initialParams.topic ? `/app?topic=${encodeURIComponent(initialParams.topic)}` : "/app",
-      );
+      clearActiveSession();
+      window.history.replaceState(null, "", "/app");
       setPhase("input");
       setStreamSessionId(null);
       setSessionId(null);
@@ -278,8 +341,8 @@ export function ChronoApp() {
       setProgressMessage("");
       setSynthesisData(null);
       setCompleteData(null);
-      setError("Session expired. Please search again.");
-    }, [initialParams.topic]),
+      setError("Connection lost. Please try again.");
+    }, []),
   });
 
   const language = proposal?.language ?? "en";
@@ -300,12 +363,19 @@ export function ChronoApp() {
       locale={locale}
       onToggleLocale={toggleLocale}
       topic={proposal?.topic ?? initialParams.topic ?? undefined}
-      showResearchBar={phase === "research"}
+      showResearchBar={phase === "research" && !initializing}
       activeYear={activeYear}
       activePhase={activePhase}
-      onNewResearch={handleNewResearch}
+      onNewResearch={phase === "research" ? handleNewResearch : undefined}
     >
-      {phase === "input" && (
+      {initializing && (
+        <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center">
+          <div className="text-chrono-text-muted text-chrono-caption animate-pulse">
+            {locale === "zh" ? "恢复中..." : "Restoring..."}
+          </div>
+        </div>
+      )}
+      {!initializing && phase === "input" && (
         <div className={transitioning ? "animate-fade-out" : ""}>
           <SearchInput
             key={searchKey}
@@ -317,7 +387,7 @@ export function ChronoApp() {
           />
         </div>
       )}
-      {phase === "proposal" && proposal && (
+      {!initializing && phase === "proposal" && proposal && (
         <div className={transitioning ? "animate-fade-out" : ""}>
           <ProposalCard
             proposal={proposal}
@@ -327,7 +397,7 @@ export function ChronoApp() {
           />
         </div>
       )}
-      {phase === "research" && (
+      {!initializing && phase === "research" && (
         <div className={transitioning ? "animate-fade-out" : ""}>
           <Timeline
             nodes={nodes}

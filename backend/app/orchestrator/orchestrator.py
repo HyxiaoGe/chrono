@@ -14,6 +14,7 @@ from app.agents.milestone import run_milestone_agent
 from app.agents.synthesizer import run_synthesizer_agent
 from app.config import settings
 from app.db.database import async_session_factory
+from app.db.redis import update_session_status
 from app.db.repository import save_research
 from app.models.research import (
     GapAnalysisResult,
@@ -888,6 +889,8 @@ class Orchestrator:
                 except Exception:
                     logger.exception("Failed to save research to DB")
 
+            await update_session_status(session.session_id, "completed")
+
         except Exception:
             logger.exception("Research execution failed")
             await session.push(
@@ -898,5 +901,6 @@ class Orchestrator:
                 },
             )
             session.status = SessionStatus.FAILED
+            await update_session_status(session.session_id, "failed")
         finally:
             await session.close()

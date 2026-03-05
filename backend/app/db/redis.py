@@ -47,9 +47,7 @@ async def get_cached_proposal(normalized_topic: str) -> dict[str, Any] | None:
         return None
 
 
-async def cache_proposal(
-    normalized_topic: str, proposal_dict: dict[str, Any]
-) -> None:
+async def cache_proposal(normalized_topic: str, proposal_dict: dict[str, Any]) -> None:
     r = get_redis()
     if r is None:
         return
@@ -71,6 +69,64 @@ async def delete_cached_proposal(normalized_topic: str) -> None:
         await r.delete(_proposal_key(normalized_topic))
     except Exception:
         logger.warning("Redis delete_cached_proposal failed", exc_info=True)
+
+
+# ---------- Session persistence ----------
+
+SESSION_TTL = 86400  # 24 hours
+
+
+def _session_key(session_id: str) -> str:
+    return f"chrono:session:{session_id}"
+
+
+async def store_session(
+    session_id: str, proposal_dict: dict[str, Any], status: str = "proposal_ready"
+) -> None:
+    r = get_redis()
+    if r is None:
+        return
+    try:
+        await r.set(
+            _session_key(session_id),
+            json.dumps({"proposal": proposal_dict, "status": status}, ensure_ascii=False),
+            ex=SESSION_TTL,
+        )
+    except Exception:
+        logger.warning("Redis store_session failed", exc_info=True)
+
+
+async def get_session_data(session_id: str) -> dict[str, Any] | None:
+    r = get_redis()
+    if r is None:
+        return None
+    try:
+        raw = await r.get(_session_key(session_id))
+        if raw is None:
+            return None
+        return json.loads(raw)
+    except Exception:
+        logger.warning("Redis get_session_data failed", exc_info=True)
+        return None
+
+
+async def update_session_status(session_id: str, status: str) -> None:
+    r = get_redis()
+    if r is None:
+        return
+    try:
+        raw = await r.get(_session_key(session_id))
+        if raw is None:
+            return
+        data = json.loads(raw)
+        data["status"] = status
+        await r.set(
+            _session_key(session_id),
+            json.dumps(data, ensure_ascii=False),
+            ex=SESSION_TTL,
+        )
+    except Exception:
+        logger.warning("Redis update_session_status failed", exc_info=True)
 
 
 async def close_redis() -> None:
