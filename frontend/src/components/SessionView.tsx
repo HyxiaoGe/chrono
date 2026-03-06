@@ -289,9 +289,45 @@ export function SessionView({ sessionId }: Props) {
       onNewResearch={phase === "research" ? handleNewResearch : undefined}
     >
       {phase === "loading" && (
-        <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center">
-          <div className="text-chrono-text-muted text-chrono-caption animate-pulse">
-            {locale === "zh" ? "加载中..." : "Loading..."}
+        <div className="flex min-h-[calc(100vh-3.5rem)] flex-col items-center justify-center px-4">
+          <div className="w-full max-w-xl animate-pulse rounded-2xl border border-chrono-border bg-chrono-surface/80 p-8">
+            <div className="flex items-center gap-3">
+              <div className="h-6 w-40 rounded bg-chrono-border" />
+              <div className="flex gap-1">
+                {Array.from({ length: 4 }, (_, i) => (
+                  <div key={i} className="h-2 w-2 rounded-full bg-chrono-border" />
+                ))}
+              </div>
+              <div className="h-4 w-24 rounded bg-chrono-border" />
+            </div>
+            <div className="mt-3 h-4 w-full rounded bg-chrono-border" />
+            <div className="mt-1.5 h-4 w-3/4 rounded bg-chrono-border" />
+
+            <div className="mt-6">
+              <div className="h-3 w-28 rounded bg-chrono-border" />
+              <div className="mt-3 space-y-2">
+                {Array.from({ length: 3 }, (_, i) => (
+                  <div key={i} className="flex items-center gap-3 rounded-lg bg-chrono-bg/50 px-3 py-3">
+                    <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-chrono-border" />
+                    <div className="flex-1 space-y-1.5">
+                      <div className="h-3.5 w-1/3 rounded bg-chrono-border" />
+                      <div className="h-3 w-2/3 rounded bg-chrono-border" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-5 flex gap-2">
+              <div className="h-4 w-20 rounded bg-chrono-border" />
+              <div className="h-4 w-16 rounded bg-chrono-border" />
+              <div className="h-4 w-16 rounded bg-chrono-border" />
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <div className="h-12 flex-1 rounded-lg bg-chrono-border" />
+              <div className="h-12 w-24 rounded-lg bg-chrono-border" />
+            </div>
           </div>
         </div>
       )}
