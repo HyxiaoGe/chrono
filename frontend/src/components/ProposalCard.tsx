@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import type { ResearchProposal } from "@/types";
 import type { Locale } from "@/data/landing";
 import { messages } from "@/data/landing";
@@ -30,10 +31,28 @@ export function ProposalCard({ proposal, onConfirm, onCancel, locale }: Props) {
   const activeDots = LEVEL_DOTS[complexity.level] ?? 1;
   const dotColor = LEVEL_DOT_COLOR[complexity.level] ?? "bg-chrono-accent";
   const t = messages[locale].app;
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onCancel();
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onCancel]);
+
+  function handleBackdropClick(e: React.MouseEvent) {
+    if (cardRef.current && !cardRef.current.contains(e.target as Node)) {
+      onCancel();
+    }
+  }
 
   return (
-    <div className="flex min-h-[calc(100vh-3.5rem)] flex-col items-center justify-center px-4">
-      <div className="animate-slide-up w-full max-w-xl rounded-2xl border border-chrono-border bg-chrono-surface/80 p-8 backdrop-blur-sm">
+    <div
+      className="flex min-h-[calc(100vh-3.5rem)] flex-col items-center justify-center px-4"
+      onClick={handleBackdropClick}
+    >
+      <div ref={cardRef} className="animate-slide-up w-full max-w-xl rounded-2xl border border-chrono-border bg-chrono-surface/80 p-8 backdrop-blur-sm">
         <div className="flex items-center gap-3">
           <h2 className="text-chrono-title font-bold text-chrono-text">
             {user_facing.title}
