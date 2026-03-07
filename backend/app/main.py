@@ -92,14 +92,14 @@ async def get_recommended_topics(locale: str = "en") -> list[dict]:
             "topics": [],
         }
         for topic in cat["topics"]:
-            en_key = normalize_topic(topic["title"].get("en", ""))
-            zh_key = normalize_topic(topic["title"].get("zh", ""))
+            title = topic["title"].get(lang, topic["title"].get("en", ""))
+            title_key = normalize_topic(title)
             flat_cat["topics"].append({
-                "title": topic["title"].get("en", ""),
+                "title": title,
                 "subtitle": topic["subtitle"].get(lang, topic["subtitle"].get("en", "")),
                 "complexity": topic["complexity"],
                 "estimated_nodes": topic["estimated_nodes"],
-                "cached": en_key in cached_set or zh_key in cached_set,
+                "cached": title_key in cached_set,
             })
         flattened.append(flat_cat)
     return flattened
