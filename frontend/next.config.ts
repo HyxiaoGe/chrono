@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+const apiBaseUrl = process.env.API_BASE_URL || "http://localhost:8000/api";
+
 const nextConfig: NextConfig = {
   output: "standalone",
   // Disable gzip to prevent SSE event buffering during development.
@@ -12,7 +14,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/api/:path*",
-        destination: "http://localhost:8000/api/:path*",
+        destination: `${apiBaseUrl}/:path*`,
       },
     ];
   },
