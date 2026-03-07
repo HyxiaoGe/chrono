@@ -1,246 +1,110 @@
-RECOMMENDED_TOPICS: list[dict] = [
-    {
-        "id": "technology",
-        "icon": "cpu",
-        "label": {"en": "Technology", "zh": "科技"},
-        "topics": [
-            {
-                "title": {"en": "iPhone", "zh": "iPhone"},
-                "subtitle": {
-                    "en": "From the first smartphone to a cultural icon",
-                    "zh": "从第一部智能手机到文化符号",
-                },
-                "complexity": "medium",
-                "estimated_nodes": 30,
-            },
-            {
-                "title": {"en": "Bitcoin", "zh": "比特币"},
-                "subtitle": {
-                    "en": "The rise of decentralized digital currency",
-                    "zh": "去中心化数字货币的崛起",
-                },
-                "complexity": "medium",
-                "estimated_nodes": 28,
-            },
-            {
-                "title": {"en": "Artificial Intelligence", "zh": "人工智能"},
-                "subtitle": {
-                    "en": "From Turing's dream to ChatGPT",
-                    "zh": "从图灵的设想到 ChatGPT",
-                },
-                "complexity": "deep",
-                "estimated_nodes": 50,
-            },
-            {
-                "title": {"en": "Tesla", "zh": "特斯拉"},
-                "subtitle": {
-                    "en": "Electric vehicles and the future of transport",
-                    "zh": "电动汽车与未来交通",
-                },
-                "complexity": "medium",
-                "estimated_nodes": 25,
-            },
-            {
-                "title": {"en": "SpaceX", "zh": "SpaceX"},
-                "subtitle": {
-                    "en": "Reusable rockets and the new space race",
-                    "zh": "可回收火箭与新太空竞赛",
-                },
-                "complexity": "medium",
-                "estimated_nodes": 25,
-            },
-            {
-                "title": {"en": "Quantum Computing", "zh": "量子计算"},
-                "subtitle": {
-                    "en": "The quest for computational supremacy",
-                    "zh": "通往计算霸权之路",
-                },
-                "complexity": "light",
-                "estimated_nodes": 18,
-            },
-        ],
-    },
-    {
-        "id": "history",
-        "icon": "landmark",
-        "label": {"en": "History", "zh": "历史"},
-        "topics": [
-            {
-                "title": {"en": "World War II", "zh": "二战"},
-                "subtitle": {
-                    "en": "The deadliest conflict in human history",
-                    "zh": "人类历史上最惨烈的冲突",
-                },
-                "complexity": "deep",
-                "estimated_nodes": 55,
-            },
-            {
-                "title": {"en": "Cold War", "zh": "冷战"},
-                "subtitle": {
-                    "en": "Decades of superpower rivalry",
-                    "zh": "数十年的超级大国对抗",
-                },
-                "complexity": "deep",
-                "estimated_nodes": 50,
-            },
-            {
-                "title": {"en": "French Revolution", "zh": "法国大革命"},
-                "subtitle": {
-                    "en": "Liberty, equality, and the birth of modern politics",
-                    "zh": "自由、平等与现代政治的诞生",
-                },
-                "complexity": "medium",
-                "estimated_nodes": 30,
-            },
-            {
-                "title": {"en": "Silk Road", "zh": "丝绸之路"},
-                "subtitle": {
-                    "en": "Ancient trade routes connecting East and West",
-                    "zh": "连接东西方的古代贸易之路",
-                },
-                "complexity": "medium",
-                "estimated_nodes": 25,
-            },
-            {
-                "title": {"en": "Space Race", "zh": "太空竞赛"},
-                "subtitle": {
-                    "en": "From Sputnik to the Moon landing",
-                    "zh": "从斯普特尼克到登月",
-                },
-                "complexity": "medium",
-                "estimated_nodes": 28,
-            },
-            {
-                "title": {"en": "Roman Empire", "zh": "罗马帝国"},
-                "subtitle": {
-                    "en": "Rise and fall of the ancient superpower",
-                    "zh": "古代超级大国的兴衰",
-                },
-                "complexity": "deep",
-                "estimated_nodes": 50,
-            },
-        ],
-    },
-    {
-        "id": "culture",
-        "icon": "globe",
-        "label": {"en": "Culture", "zh": "文化"},
-        "topics": [
-            {
-                "title": {"en": "Olympic Games", "zh": "奥运会"},
-                "subtitle": {
-                    "en": "From ancient Greece to a global spectacle",
-                    "zh": "从古希腊到全球盛事",
-                },
-                "complexity": "deep",
-                "estimated_nodes": 45,
-            },
-            {
-                "title": {"en": "Rock Music", "zh": "摇滚音乐"},
-                "subtitle": {
-                    "en": "The sound that changed a generation",
-                    "zh": "改变一代人的声音",
-                },
-                "complexity": "medium",
-                "estimated_nodes": 30,
-            },
-            {
-                "title": {"en": "Cinema", "zh": "电影"},
-                "subtitle": {
-                    "en": "From silent films to the streaming era",
-                    "zh": "从无声电影到流媒体时代",
-                },
-                "complexity": "deep",
-                "estimated_nodes": 45,
-            },
-            {
-                "title": {"en": "Renaissance", "zh": "文艺复兴"},
-                "subtitle": {
-                    "en": "The cultural rebirth of Europe",
-                    "zh": "欧洲文化的重生",
-                },
-                "complexity": "medium",
-                "estimated_nodes": 30,
-            },
-            {
-                "title": {"en": "Hip Hop", "zh": "嘻哈音乐"},
-                "subtitle": {
-                    "en": "From the Bronx to global dominance",
-                    "zh": "从布朗克斯到全球统治",
-                },
-                "complexity": "medium",
-                "estimated_nodes": 25,
-            },
-            {
-                "title": {"en": "Video Games", "zh": "电子游戏"},
-                "subtitle": {
-                    "en": "The evolution of interactive entertainment",
-                    "zh": "交互式娱乐的进化",
-                },
-                "complexity": "medium",
-                "estimated_nodes": 30,
-            },
-        ],
-    },
-    {
-        "id": "science",
-        "icon": "atom",
-        "label": {"en": "Science", "zh": "科学"},
-        "topics": [
-            {
-                "title": {"en": "DNA Discovery", "zh": "DNA 发现"},
-                "subtitle": {
-                    "en": "Unlocking the code of life",
-                    "zh": "解开生命密码",
-                },
-                "complexity": "medium",
-                "estimated_nodes": 25,
-            },
-            {
-                "title": {"en": "Climate Change", "zh": "气候变化"},
-                "subtitle": {
-                    "en": "The science and politics of a warming planet",
-                    "zh": "变暖星球的科学与政治",
-                },
-                "complexity": "deep",
-                "estimated_nodes": 45,
-            },
-            {
-                "title": {"en": "Internet", "zh": "互联网"},
-                "subtitle": {
-                    "en": "From ARPANET to the connected world",
-                    "zh": "从 ARPANET 到互联世界",
-                },
-                "complexity": "deep",
-                "estimated_nodes": 45,
-            },
-            {
-                "title": {"en": "Nuclear Energy", "zh": "核能"},
-                "subtitle": {
-                    "en": "Power and peril of the atom",
-                    "zh": "原子的力量与危险",
-                },
-                "complexity": "medium",
-                "estimated_nodes": 30,
-            },
-            {
-                "title": {"en": "Antibiotics", "zh": "抗生素"},
-                "subtitle": {
-                    "en": "The discovery that saved millions",
-                    "zh": "拯救了数百万人的发现",
-                },
-                "complexity": "light",
-                "estimated_nodes": 18,
-            },
-            {
-                "title": {"en": "Theory of Relativity", "zh": "相对论"},
-                "subtitle": {
-                    "en": "Einstein's revolution in physics",
-                    "zh": "爱因斯坦的物理学革命",
-                },
-                "complexity": "light",
-                "estimated_nodes": 15,
-            },
-        ],
-    },
-]
+RECOMMENDED_TOPICS: dict[str, list[dict]] = {
+    "en": [
+        {
+            "id": "technology",
+            "icon": "cpu",
+            "label": "Technology",
+            "topics": [
+                {"title": "iPhone", "subtitle": "From the first smartphone to a cultural icon", "complexity": "medium", "estimated_nodes": 30},
+                {"title": "Bitcoin", "subtitle": "The rise of decentralized digital currency", "complexity": "medium", "estimated_nodes": 28},
+                {"title": "Artificial Intelligence", "subtitle": "From Turing's dream to ChatGPT", "complexity": "deep", "estimated_nodes": 50},
+                {"title": "Tesla", "subtitle": "Electric vehicles and the future of transport", "complexity": "medium", "estimated_nodes": 25},
+                {"title": "SpaceX", "subtitle": "Reusable rockets and the new space race", "complexity": "medium", "estimated_nodes": 25},
+                {"title": "Quantum Computing", "subtitle": "The quest for computational supremacy", "complexity": "light", "estimated_nodes": 18},
+            ],
+        },
+        {
+            "id": "history",
+            "icon": "landmark",
+            "label": "History",
+            "topics": [
+                {"title": "World War II", "subtitle": "The deadliest conflict in human history", "complexity": "deep", "estimated_nodes": 55},
+                {"title": "Cold War", "subtitle": "Decades of superpower rivalry", "complexity": "deep", "estimated_nodes": 50},
+                {"title": "French Revolution", "subtitle": "Liberty, equality, and the birth of modern politics", "complexity": "medium", "estimated_nodes": 30},
+                {"title": "Silk Road", "subtitle": "Ancient trade routes connecting East and West", "complexity": "medium", "estimated_nodes": 25},
+                {"title": "Space Race", "subtitle": "From Sputnik to the Moon landing", "complexity": "medium", "estimated_nodes": 28},
+                {"title": "Roman Empire", "subtitle": "Rise and fall of the ancient superpower", "complexity": "deep", "estimated_nodes": 50},
+            ],
+        },
+        {
+            "id": "culture",
+            "icon": "globe",
+            "label": "Culture",
+            "topics": [
+                {"title": "Olympic Games", "subtitle": "From ancient Greece to a global spectacle", "complexity": "deep", "estimated_nodes": 45},
+                {"title": "Rock Music", "subtitle": "The sound that changed a generation", "complexity": "medium", "estimated_nodes": 30},
+                {"title": "Cinema", "subtitle": "From silent films to the streaming era", "complexity": "deep", "estimated_nodes": 45},
+                {"title": "Renaissance", "subtitle": "The cultural rebirth of Europe", "complexity": "medium", "estimated_nodes": 30},
+                {"title": "Hip Hop", "subtitle": "From the Bronx to global dominance", "complexity": "medium", "estimated_nodes": 25},
+                {"title": "Video Games", "subtitle": "The evolution of interactive entertainment", "complexity": "medium", "estimated_nodes": 30},
+            ],
+        },
+        {
+            "id": "science",
+            "icon": "atom",
+            "label": "Science",
+            "topics": [
+                {"title": "DNA Discovery", "subtitle": "Unlocking the code of life", "complexity": "medium", "estimated_nodes": 25},
+                {"title": "Climate Change", "subtitle": "The science and politics of a warming planet", "complexity": "deep", "estimated_nodes": 45},
+                {"title": "Internet", "subtitle": "From ARPANET to the connected world", "complexity": "deep", "estimated_nodes": 45},
+                {"title": "Nuclear Energy", "subtitle": "Power and peril of the atom", "complexity": "medium", "estimated_nodes": 30},
+                {"title": "Antibiotics", "subtitle": "The discovery that saved millions", "complexity": "light", "estimated_nodes": 18},
+                {"title": "Theory of Relativity", "subtitle": "Einstein's revolution in physics", "complexity": "light", "estimated_nodes": 15},
+            ],
+        },
+    ],
+    "zh": [
+        {
+            "id": "technology",
+            "icon": "cpu",
+            "label": "科技",
+            "topics": [
+                {"title": "改革开放", "subtitle": "中国经济腾飞的起点", "complexity": "deep", "estimated_nodes": 50},
+                {"title": "中国航天发展史", "subtitle": "从东方红到空间站", "complexity": "deep", "estimated_nodes": 45},
+                {"title": "华为", "subtitle": "从交换机到全球通信巨头", "complexity": "medium", "estimated_nodes": 30},
+                {"title": "中国高铁", "subtitle": "从引进到自主创新的跨越", "complexity": "medium", "estimated_nodes": 28},
+                {"title": "抖音发展史", "subtitle": "短视频如何改变内容消费", "complexity": "medium", "estimated_nodes": 25},
+                {"title": "中国互联网发展史", "subtitle": "从拨号上网到移动互联", "complexity": "deep", "estimated_nodes": 50},
+            ],
+        },
+        {
+            "id": "history",
+            "icon": "landmark",
+            "label": "历史",
+            "topics": [
+                {"title": "三国", "subtitle": "魏蜀吴的权力博弈与英雄传奇", "complexity": "deep", "estimated_nodes": 55},
+                {"title": "丝绸之路", "subtitle": "连接东西方文明的古代商道", "complexity": "medium", "estimated_nodes": 30},
+                {"title": "秦始皇统一六国", "subtitle": "从战国纷争到大一统帝国", "complexity": "medium", "estimated_nodes": 28},
+                {"title": "唐朝盛世", "subtitle": "中国古代文明的巅峰时代", "complexity": "deep", "estimated_nodes": 45},
+                {"title": "鸦片战争", "subtitle": "近代中国的转折点", "complexity": "medium", "estimated_nodes": 30},
+                {"title": "敦煌莫高窟", "subtitle": "千年佛教艺术的宝库", "complexity": "medium", "estimated_nodes": 25},
+            ],
+        },
+        {
+            "id": "culture",
+            "icon": "globe",
+            "label": "文化",
+            "topics": [
+                {"title": "四大发明", "subtitle": "改变世界的中国古代科技", "complexity": "medium", "estimated_nodes": 25},
+                {"title": "武术", "subtitle": "从少林到太极的千年传承", "complexity": "medium", "estimated_nodes": 28},
+                {"title": "中国茶文化", "subtitle": "从神农尝百草到全球茶道", "complexity": "medium", "estimated_nodes": 25},
+                {"title": "京剧", "subtitle": "国粹艺术的形成与演变", "complexity": "medium", "estimated_nodes": 25},
+                {"title": "春节", "subtitle": "中华民族最重要的传统节日", "complexity": "light", "estimated_nodes": 20},
+                {"title": "汉字演变", "subtitle": "从甲骨文到简体字", "complexity": "medium", "estimated_nodes": 30},
+            ],
+        },
+        {
+            "id": "science",
+            "icon": "atom",
+            "label": "科学",
+            "topics": [
+                {"title": "屠呦呦与青蒿素", "subtitle": "中国首位诺贝尔医学奖得主", "complexity": "light", "estimated_nodes": 18},
+                {"title": "北斗导航系统", "subtitle": "中国自主卫星定位系统的崛起", "complexity": "medium", "estimated_nodes": 28},
+                {"title": "中国核工业发展", "subtitle": "从两弹一星到核电站", "complexity": "deep", "estimated_nodes": 45},
+                {"title": "杂交水稻", "subtitle": "袁隆平与粮食安全革命", "complexity": "medium", "estimated_nodes": 25},
+                {"title": "量子通信", "subtitle": "墨子号与量子科技前沿", "complexity": "light", "estimated_nodes": 18},
+                {"title": "中医发展史", "subtitle": "从黄帝内经到现代中西医结合", "complexity": "deep", "estimated_nodes": 45},
+            ],
+        },
+    ],
+}

@@ -73,8 +73,8 @@ async def list_researches_endpoint():
 
 @app.get("/api/topics/recommended")
 async def get_recommended_topics(locale: str = "en") -> list[dict]:
-    lang = locale if locale in ("en", "zh") else "en"
-    result = copy.deepcopy(RECOMMENDED_TOPICS)
+    lang = locale if locale in RECOMMENDED_TOPICS else "en"
+    categories = copy.deepcopy(RECOMMENDED_TOPICS[lang])
     cached_set: set[str] = set()
     if async_session_factory is not None:
         try:
@@ -83,26 +83,10 @@ async def get_recommended_topics(locale: str = "en") -> list[dict]:
             cached_set = {normalize_topic(r.topic) for r in rows}
         except Exception:
             pass
-    flattened = []
-    for cat in result:
-        flat_cat = {
-            "id": cat["id"],
-            "icon": cat["icon"],
-            "label": cat["label"].get(lang, cat["label"].get("en", "")),
-            "topics": [],
-        }
+    for cat in categories:
         for topic in cat["topics"]:
-            title = topic["title"].get(lang, topic["title"].get("en", ""))
-            title_key = normalize_topic(title)
-            flat_cat["topics"].append({
-                "title": title,
-                "subtitle": topic["subtitle"].get(lang, topic["subtitle"].get("en", "")),
-                "complexity": topic["complexity"],
-                "estimated_nodes": topic["estimated_nodes"],
-                "cached": title_key in cached_set,
-            })
-        flattened.append(flat_cat)
-    return flattened
+            topic["cached"] = normalize_topic(topic["title"]) in cached_set
+    return categories
 
 
 @app.post(
