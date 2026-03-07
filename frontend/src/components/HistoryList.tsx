@@ -160,7 +160,8 @@ export function HistoryList({ onSelectTopic, locale, disabled }: Props) {
   const t = messages[locale].app;
 
   useEffect(() => {
-    fetch("/api/researches")
+    setLoading(true);
+    fetch(`/api/researches?locale=${locale}`)
       .then((r) => {
         if (!r.ok) throw new Error();
         return r.json();
@@ -173,7 +174,7 @@ export function HistoryList({ onSelectTopic, locale, disabled }: Props) {
         setError(true);
         setLoading(false);
       });
-  }, []);
+  }, [locale]);
 
   if (error) return null;
   if (!loading && items.length === 0) {

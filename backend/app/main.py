@@ -49,11 +49,13 @@ orchestrator = Orchestrator(tavily=tavily_service)
 
 
 @app.get("/api/researches")
-async def list_researches_endpoint():
+async def list_researches_endpoint(locale: str | None = None):
     if async_session_factory is None:
         return []
     async with async_session_factory() as db:
         rows = await list_researches(db)
+    if locale:
+        rows = [r for r in rows if (r.language or "").startswith(locale)]
     return [
         {
             "id": str(row.id),
