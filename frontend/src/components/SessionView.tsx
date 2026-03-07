@@ -282,11 +282,11 @@ export function SessionView({ sessionId }: Props) {
     <AppShell
       locale={locale}
       onToggleLocale={toggleLocale}
+      mode="session"
       topic={proposal?.topic ?? searchParams.get("topic") ?? undefined}
-      showResearchBar={phase === "research"}
       activeYear={activeYear}
       activePhase={activePhase}
-      onNewResearch={phase === "research" ? handleNewResearch : undefined}
+      onBack={handleNewResearch}
     >
       {phase === "loading" && (
         <div className="flex min-h-[calc(100vh-3.5rem)] flex-col items-center justify-center px-4">

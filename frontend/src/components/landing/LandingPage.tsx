@@ -12,7 +12,7 @@ export function LandingPage() {
 
   return (
     <div className="min-h-screen bg-chrono-bg">
-      <Navbar locale={locale} onToggleLocale={toggleLocale} />
+      <Navbar locale={locale} onToggleLocale={toggleLocale} mode="landing" />
       <Hero locale={locale} />
       <HowItWorks locale={locale} />
       <Features locale={locale} />

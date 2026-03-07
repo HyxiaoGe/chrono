@@ -6,8 +6,8 @@ import type { Locale } from "@/data/landing";
 import { messages } from "@/data/landing";
 
 interface Topic {
-  title: Record<string, string>;
-  subtitle: Record<string, string>;
+  title: string | Record<string, string>;
+  subtitle: string | Record<string, string>;
   complexity: string;
   estimated_nodes: number;
   cached?: boolean;
@@ -16,8 +16,13 @@ interface Topic {
 interface Category {
   id: string;
   icon: string;
-  label: Record<string, string>;
+  label: string | Record<string, string>;
   topics: Topic[];
+}
+
+function str(value: string | Record<string, string>, locale: Locale): string {
+  if (typeof value === "string") return value;
+  return value[locale] ?? value["en"] ?? "";
 }
 
 interface Props {
@@ -51,22 +56,26 @@ export function RecommendedTopics({ onSelectTopic, locale, disabled }: Props) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(0);
+  const [fetchedLocale, setFetchedLocale] = useState<Locale | null>(null);
   const t = messages[locale].app;
 
   useEffect(() => {
-    fetch("/api/topics/recommended")
+    if (fetchedLocale === locale) return;
+    setLoading(true);
+    fetch(`/api/topics/recommended?locale=${locale}`)
       .then((r) => {
         if (!r.ok) throw new Error();
         return r.json();
       })
       .then((data: Category[]) => {
         setCategories(data);
+        setFetchedLocale(locale);
         setLoading(false);
       })
       .catch(() => {
         setLoading(false);
       });
-  }, []);
+  }, [locale, fetchedLocale]);
 
   if (loading) {
     return (
@@ -119,7 +128,7 @@ export function RecommendedTopics({ onSelectTopic, locale, disabled }: Props) {
                 }`}
             >
               {Icon && <Icon size={14} />}
-              {cat.label[locale]}
+              {str(cat.label, locale)}
             </button>
           );
         })}
@@ -127,10 +136,10 @@ export function RecommendedTopics({ onSelectTopic, locale, disabled }: Props) {
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4">
         {active.topics.map((topic) => (
           <button
-            key={topic.title[locale]}
+            key={str(topic.title, locale)}
             onClick={() => {
               if (disabled) return;
-              onSelectTopic(topic.title[locale]);
+              onSelectTopic(str(topic.title, locale));
             }}
             className={`rounded-lg border border-l-[3px] border-chrono-border/40 px-4 py-3 text-left
                        transition-all duration-200
@@ -141,13 +150,13 @@ export function RecommendedTopics({ onSelectTopic, locale, disabled }: Props) {
                        }`}
           >
             <div className="flex items-center text-chrono-body text-chrono-text font-medium">
-              <span className="truncate">{topic.title[locale]}</span>
+              <span className="truncate">{str(topic.title, locale)}</span>
               {topic.cached && (
                 <span className="ml-auto text-chrono-tiny text-chrono-accent/70">⚡</span>
               )}
             </div>
             <p className="mt-1 text-chrono-tiny text-chrono-text-muted line-clamp-2">
-              {topic.subtitle[locale]}
+              {str(topic.subtitle, locale)}
             </p>
             <div className="mt-3 flex items-center gap-2">
               <span

@@ -42,7 +42,7 @@ export function SearchHome() {
   }
 
   return (
-    <AppShell locale={locale} onToggleLocale={toggleLocale}>
+    <AppShell locale={locale} onToggleLocale={toggleLocale} mode="search">
       <SearchInput
         onSearch={handleSearch}
         isPending={false}

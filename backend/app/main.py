@@ -72,7 +72,8 @@ async def list_researches_endpoint():
 
 
 @app.get("/api/topics/recommended")
-async def get_recommended_topics() -> list[dict]:
+async def get_recommended_topics(locale: str = "en") -> list[dict]:
+    lang = locale if locale in ("en", "zh") else "en"
     result = copy.deepcopy(RECOMMENDED_TOPICS)
     cached_set: set[str] = set()
     if async_session_factory is not None:
@@ -82,12 +83,26 @@ async def get_recommended_topics() -> list[dict]:
             cached_set = {normalize_topic(r.topic) for r in rows}
         except Exception:
             pass
+    flattened = []
     for cat in result:
+        flat_cat = {
+            "id": cat["id"],
+            "icon": cat["icon"],
+            "label": cat["label"].get(lang, cat["label"].get("en", "")),
+            "topics": [],
+        }
         for topic in cat["topics"]:
             en_key = normalize_topic(topic["title"].get("en", ""))
             zh_key = normalize_topic(topic["title"].get("zh", ""))
-            topic["cached"] = en_key in cached_set or zh_key in cached_set
-    return result
+            flat_cat["topics"].append({
+                "title": topic["title"].get(lang, topic["title"].get("en", "")),
+                "subtitle": topic["subtitle"].get(lang, topic["subtitle"].get("en", "")),
+                "complexity": topic["complexity"],
+                "estimated_nodes": topic["estimated_nodes"],
+                "cached": en_key in cached_set or zh_key in cached_set,
+            })
+        flattened.append(flat_cat)
+    return flattened
 
 
 @app.post(
