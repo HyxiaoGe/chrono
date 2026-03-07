@@ -95,7 +95,7 @@ async def get_recommended_topics(locale: str = "en") -> list[dict]:
             en_key = normalize_topic(topic["title"].get("en", ""))
             zh_key = normalize_topic(topic["title"].get("zh", ""))
             flat_cat["topics"].append({
-                "title": topic["title"].get(lang, topic["title"].get("en", "")),
+                "title": topic["title"].get("en", ""),
                 "subtitle": topic["subtitle"].get(lang, topic["subtitle"].get("en", "")),
                 "complexity": topic["complexity"],
                 "estimated_nodes": topic["estimated_nodes"],
