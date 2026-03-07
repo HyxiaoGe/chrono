@@ -25,6 +25,13 @@ const BADGE_COLORS: Record<string, string> = {
   epic: "bg-chrono-level-epic/15 text-chrono-level-epic",
 };
 
+const LEVEL_LABELS: Record<string, Record<Locale, string>> = {
+  light: { en: "Light", zh: "轻量" },
+  medium: { en: "Medium", zh: "中等" },
+  deep: { en: "Deep", zh: "深度" },
+  epic: { en: "Epic", zh: "史诗" },
+};
+
 function shortSpan(span?: string): string {
   if (!span) return "";
   return span.replace(/\s*[\(（].*?[\)）]\s*/g, "").trim();
@@ -96,7 +103,7 @@ function HistoryRow({
           className={`shrink-0 rounded-full px-2 py-0.5 text-chrono-tiny font-medium
                       ${BADGE_COLORS[item.complexity_level] || ""}`}
         >
-          {item.complexity_level}
+          {LEVEL_LABELS[item.complexity_level]?.[locale] ?? item.complexity_level}
         </span>
         <span className="shrink-0 text-chrono-tiny text-chrono-text-muted/50">
           {formatRelativeTime(item.created_at, locale)}
@@ -107,7 +114,7 @@ function HistoryRow({
         {span}
         {span && <> &middot; </>}
         {item.total_nodes} {t.nodes}
-        {item.source_count > 0 && <> &middot; {item.source_count} sources</>}
+        {item.source_count > 0 && <> &middot; {item.source_count} {locale === "zh" ? "来源" : "sources"}</>}
       </p>
 
       {item.key_insight && (

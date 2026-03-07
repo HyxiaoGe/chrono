@@ -40,6 +40,13 @@ const BADGE_COLORS: Record<string, string> = {
   epic: "bg-chrono-level-epic/15 text-chrono-level-epic",
 };
 
+const LEVEL_LABELS: Record<string, Record<Locale, string>> = {
+  light: { en: "Light", zh: "轻量" },
+  medium: { en: "Medium", zh: "中等" },
+  deep: { en: "Deep", zh: "深度" },
+  epic: { en: "Epic", zh: "史诗" },
+};
+
 const LEVEL_BORDER: Record<string, string> = {
   light: "border-l-chrono-level-light",
   medium: "border-l-chrono-level-medium",
@@ -154,10 +161,10 @@ export function RecommendedTopics({ onSelectTopic, locale, disabled }: Props) {
                 className={`rounded-full px-2 py-0.5 text-chrono-tiny font-medium
                   ${BADGE_COLORS[topic.complexity] || ""}`}
               >
-                {topic.complexity}
+                {LEVEL_LABELS[topic.complexity]?.[locale] ?? topic.complexity}
               </span>
               <span className="text-chrono-tiny text-chrono-text-muted/50">
-                ~{topic.estimated_nodes} nodes
+                ~{topic.estimated_nodes} {locale === "zh" ? "节点" : "nodes"}
               </span>
             </div>
           </button>

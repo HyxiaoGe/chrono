@@ -41,7 +41,7 @@ interface LandingMessages {
   hero: { title: string; titleAccent: string; subtitle: string; cta: string };
   howItWorks: {
     heading: string;
-    steps: Array<{ title: string; description: string }>;
+    steps: Array<{ title: string; description: string; details: string[] }>;
   };
   features: {
     heading: string;
@@ -89,17 +89,23 @@ export const messages: Record<Locale, LandingMessages> = {
       steps: [
         {
           title: "Enter a topic",
-          description: "Type anything: iPhone, Bitcoin, Cold War...",
+          description: "Type any keyword — the Orchestrator analyzes complexity, plans research dimensions, and generates a proposal for you to confirm.",
+          details: ["Complexity assessment (Light → Epic)", "Research dimensions & time estimate", "Confirm or adjust before starting"],
         },
         {
-          title: "AI researches",
-          description:
-            "Multi-agent pipeline analyzes sources, builds structure, enriches details",
+          title: "Build skeleton",
+          description: "Milestone Agents search and build the timeline backbone — multiple dimensions run in parallel, each discovering key events.",
+          details: ["Parallel agents per dimension", "Tavily search + LLM knowledge", "3-layer deduplication"],
         },
         {
-          title: "Explore timeline",
-          description:
-            "Interactive timeline with connections, synthesis, and export",
+          title: "Enrich details",
+          description: "Detail Agents dive deep into every node — searching for facts, stats, key people, and impact. Nodes stream to you as they complete.",
+          details: ["Concurrent deep research per node", "Key stats, quotes & sources", "Hallucination filtering"],
+        },
+        {
+          title: "Analyze & synthesize",
+          description: "Gap analysis finds missing events and causal connections. A Synthesizer generates the final narrative summary and cross-validates dates.",
+          details: ["Gap detection & auto-fill", "Causal connection mapping", "Date cross-validation"],
         },
       ],
     },
@@ -164,22 +170,27 @@ export const messages: Record<Locale, LandingMessages> = {
       cta: "\u5f00\u59cb\u4f7f\u7528 \u2192",
     },
     howItWorks: {
-      heading: "\u5de5\u4f5c\u539f\u7406",
+      heading: "工作原理",
       steps: [
         {
-          title: "\u8f93\u5165\u4e3b\u9898",
-          description:
-            "\u8f93\u5165\u4efb\u610f\u8bdd\u9898\uff1aiPhone\u3001\u6bd4\u7279\u5e01\u3001\u4e8c\u6218...",
+          title: "输入主题",
+          description: "输入任意关键词 — Orchestrator 分析复杂度、规划调研维度，生成调研提案供你确认。",
+          details: ["复杂度评估 (Light → Epic)", "调研维度与时间预估", "确认后开始执行"],
         },
         {
-          title: "AI \u8c03\u7814",
-          description:
-            "\u591a\u667a\u80fd\u4f53\u534f\u4f5c\u5206\u6790\u6765\u6e90\u3001\u6784\u5efa\u9aa8\u67b6\u3001\u586b\u5145\u7ec6\u8282",
+          title: "构建骨架",
+          description: "Milestone Agent 并行搜索多个维度，发现关键事件节点，构建时间线骨架。",
+          details: ["多维度并行调研", "Tavily 搜索 + 模型知识", "三层去重机制"],
         },
         {
-          title: "\u63a2\u7d22\u65f6\u95f4\u7ebf",
-          description:
-            "\u4ea4\u4e92\u5f0f\u65f6\u95f4\u7ebf\uff0c\u5305\u542b\u4e8b\u4ef6\u5173\u8054\u3001AI \u603b\u7ed3\u4e0e\u5bfc\u51fa",
+          title: "深度补充",
+          description: "Detail Agent 逐一深挖每个节点 — 搜索事实、数据、关键人物和影响。节点完成后实时推送。",
+          details: ["节点级并发深度调研", "关键数据、引用与来源", "幻觉检测与过滤"],
+        },
+        {
+          title: "分析与总结",
+          description: "Gap Analysis 发现缺失事件和因果关联。Synthesizer 生成最终叙事总结并交叉验证日期。",
+          details: ["空白检测与自动补充", "因果关系图谱", "日期交叉校验"],
         },
       ],
     },

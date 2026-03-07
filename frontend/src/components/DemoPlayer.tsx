@@ -132,9 +132,11 @@ function reducer(state: DemoState, action: Action): DemoState {
 function DemoSearch({
   typedChars,
   subtitle,
+  locale,
 }: {
   typedChars: number;
   subtitle: string;
+  locale: Locale;
 }) {
   const text = TOPIC.slice(0, typedChars);
   return (
@@ -153,7 +155,7 @@ function DemoSearch({
           </span>
         </div>
         <div className="rounded-lg bg-chrono-text px-4 py-2 text-chrono-caption font-medium text-chrono-bg opacity-40">
-          Research
+          {locale === "zh" ? "开始调研" : "Research"}
         </div>
       </div>
     </div>
@@ -203,7 +205,7 @@ function DemoProposal({ data, locale }: { data: DemoData; locale: Locale }) {
         <div className="mt-4 flex gap-4 text-chrono-tiny text-chrono-text-muted">
           <span>{proposal.user_facing.duration_text}</span>
           <span>{proposal.user_facing.credits_text}</span>
-          <span>~{proposal.complexity.estimated_total_nodes} nodes</span>
+          <span>~{proposal.complexity.estimated_total_nodes} {locale === "zh" ? "个节点" : "nodes"}</span>
         </div>
       </div>
     </div>
@@ -306,8 +308,34 @@ function DemoSynthesis({ data, locale }: { data: DemoData; locale: Locale }) {
       </p>
       <div className="mt-2 flex gap-3 text-chrono-tiny text-chrono-text-muted">
         <span>{synthesis.timeline_span}</span>
-        <span>{synthesis.source_count} sources</span>
+        <span>{synthesis.source_count} {locale === "zh" ? "个来源" : "sources"}</span>
       </div>
+    </div>
+  );
+}
+
+function DemoProgress({ phase }: { phase: DemoPhase }) {
+  const steps: { label: string; phases: DemoPhase[] }[] = [
+    { label: "Input", phases: ["typing", "typing-out"] },
+    { label: "Plan", phases: ["proposal", "proposal-out"] },
+    { label: "Research", phases: ["skeleton", "detail"] },
+    { label: "Synthesis", phases: ["synthesis", "hold", "fadeout"] },
+  ];
+
+  const activeIndex = steps.findIndex((s) => s.phases.includes(phase));
+
+  return (
+    <div className="flex items-center gap-1">
+      {steps.map((step, i) => (
+        <div
+          key={step.label}
+          className={`h-1 rounded-full transition-all duration-500 ${
+            i <= activeIndex
+              ? "w-3 bg-chrono-accent"
+              : "w-1.5 bg-chrono-border"
+          }`}
+        />
+      ))}
     </div>
   );
 }
@@ -394,13 +422,14 @@ export function DemoPlayer({ locale }: Props) {
       {/* Top bar */}
       <div className="h-8 flex items-center px-3 border-b border-chrono-border/50">
         <div className="flex gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-chrono-border" />
-          <span className="h-2.5 w-2.5 rounded-full bg-chrono-border" />
-          <span className="h-2.5 w-2.5 rounded-full bg-chrono-border" />
+          <span className="h-2.5 w-2.5 rounded-full bg-[#ec6a5e]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-[#f4bf4f]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-[#61c554]" />
         </div>
-        <span className="mx-auto text-chrono-tiny text-chrono-text-muted">
-          Chrono
-        </span>
+        <div className="mx-auto flex items-center gap-2">
+          <span className="text-chrono-tiny text-chrono-text-muted">Chrono</span>
+          <DemoProgress phase={state.phase} />
+        </div>
       </div>
 
       {/* Content area */}
@@ -416,6 +445,7 @@ export function DemoPlayer({ locale }: Props) {
             <DemoSearch
               typedChars={state.typedChars}
               subtitle={messages[locale].demo.subtitle}
+              locale={locale}
             />
           </div>
         )}

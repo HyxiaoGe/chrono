@@ -11,8 +11,14 @@ export function Hero({ locale }: Props) {
   const t = messages[locale].hero;
 
   return (
-    <section className="pt-24 sm:pt-32 pb-16 px-4">
-      <div className="mx-auto max-w-4xl text-center">
+    <section className="relative pt-24 sm:pt-32 pb-16 px-4 overflow-hidden">
+      {/* Background glow */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 h-[600px] w-[800px] rounded-full bg-chrono-accent/[0.04] blur-[120px]" />
+        <div className="absolute top-[10%] left-[20%] h-[300px] w-[300px] rounded-full bg-chrono-accent/[0.03] blur-[80px]" />
+      </div>
+
+      <div className="relative mx-auto max-w-4xl text-center">
         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-chrono-text">
           {t.title}
         </h1>
@@ -29,7 +35,7 @@ export function Hero({ locale }: Props) {
           {t.cta}
         </Link>
       </div>
-      <div className="mx-auto mt-16 max-w-4xl">
+      <div className="relative mx-auto mt-16 max-w-4xl">
         <DemoPlayer locale={locale} />
       </div>
     </section>
