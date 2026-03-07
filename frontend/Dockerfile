@@ -9,6 +9,9 @@ WORKDIR /app
 ARG NEXT_PUBLIC_API_BASE_URL=http://localhost:8001/api
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
 
+ARG API_BASE_URL=http://localhost:8000/api
+ENV API_BASE_URL=$API_BASE_URL
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN corepack enable && pnpm build
