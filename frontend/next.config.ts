@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   // Disable gzip to prevent SSE event buffering during development.
   // Production SSE will bypass the Next.js proxy entirely (browser → backend direct).
   compress: false,
