@@ -61,7 +61,8 @@ export function RecommendedTopics({ onSelectTopic, locale, disabled }: Props) {
 
   useEffect(() => {
     if (fetchedLocale === locale) return;
-    setLoading(true);
+    const isInitial = fetchedLocale === null;
+    if (isInitial) setLoading(true);
     fetch(`/api/topics/recommended?locale=${locale}`)
       .then((r) => {
         if (!r.ok) throw new Error();
@@ -69,6 +70,7 @@ export function RecommendedTopics({ onSelectTopic, locale, disabled }: Props) {
       })
       .then((data: Category[]) => {
         setCategories(data);
+        setActiveTab(0);
         setFetchedLocale(locale);
         setLoading(false);
       })

@@ -159,8 +159,12 @@ export function HistoryList({ onSelectTopic, locale, disabled }: Props) {
   const [expanded, setExpanded] = useState(false);
   const t = messages[locale].app;
 
+  const [fetchedLocale, setFetchedLocale] = useState<Locale | null>(null);
+
   useEffect(() => {
-    setLoading(true);
+    if (fetchedLocale === locale) return;
+    const isInitial = fetchedLocale === null;
+    if (isInitial) setLoading(true);
     fetch(`/api/researches?locale=${locale}`)
       .then((r) => {
         if (!r.ok) throw new Error();
@@ -168,13 +172,14 @@ export function HistoryList({ onSelectTopic, locale, disabled }: Props) {
       })
       .then((data: ResearchSummary[]) => {
         setItems(data);
+        setFetchedLocale(locale);
         setLoading(false);
       })
       .catch(() => {
         setError(true);
         setLoading(false);
       });
-  }, [locale]);
+  }, [locale, fetchedLocale]);
 
   if (error) return null;
   if (!loading && items.length === 0) {
