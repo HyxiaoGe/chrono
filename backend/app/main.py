@@ -87,7 +87,10 @@ async def get_recommended_topics(locale: str = "en") -> list[dict]:
             pass
     for cat in categories:
         for topic in cat["topics"]:
-            topic["cached"] = normalize_topic(topic["title"]) in cached_set
+            key = normalize_topic(topic["title"])
+            topic["cached"] = any(
+                key in cached or cached in key for cached in cached_set
+            )
     return categories
 
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import ResearchRow, TimelineNodeRow
@@ -13,9 +13,21 @@ from app.utils.topic import normalize_topic
 
 async def get_research_by_topic(session: AsyncSession, topic: str) -> ResearchRow | None:
     normalized = normalize_topic(topic)
+    # Exact match first
     stmt = select(ResearchRow).where(ResearchRow.topic_normalized == normalized)
     result = await session.execute(stmt)
-    return result.scalar_one_or_none()
+    row = result.scalar_one_or_none()
+    if row is not None:
+        return row
+    # Fuzzy: DB topic contains user input, or user input contains DB topic
+    stmt = select(ResearchRow).where(
+        or_(
+            ResearchRow.topic_normalized.contains(normalized),
+            ResearchRow.topic.ilike(f"%{topic.strip()}%"),
+        )
+    ).order_by(ResearchRow.created_at.desc())
+    result = await session.execute(stmt)
+    return result.scalars().first()
 
 
 async def get_nodes_for_research(
