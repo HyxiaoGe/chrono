@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from datetime import date
 
 from pydantic_ai import Agent, UsageLimits
 
@@ -13,8 +14,9 @@ logger = logging.getLogger(__name__)
 milestone_agent = Agent(
     resolve_model(settings.milestone_model),
     output_type=MilestoneResult,
-    instructions="""\
+    instructions=f"""\
 You are a milestone research specialist for the Chrono timeline system.
+Today's date is {date.today().isoformat()}.
 Your task is to discover milestone events for ONE specific research dimension of a topic.
 
 ## Input you will receive
@@ -54,13 +56,14 @@ async def run_milestone_agent(
     tavily: TavilyService,
     time_range: str = "",
 ) -> tuple[MilestoneResult, list[str]]:
+    current_year = date.today().year
     range_suffix = f" {time_range}" if time_range else ""
     query_main = f"{topic} {thread_name} milestones timeline history{range_suffix}"
-    query_recent = f"{topic} {thread_name} latest 2025 2026"
+    query_recent = f"{topic} {thread_name} latest {current_year - 1} {current_year}"
 
     try:
         coros = [tavily.search_and_format(query_main)]
-        if not time_range or time_range.split("-")[-1].strip() >= "2024":
+        if not time_range or time_range.split("-")[-1].strip() >= str(current_year - 2):
             coros.append(tavily.search_and_format(query_recent))
         results = await asyncio.gather(*coros)
         ctx_main, urls_main = results[0]

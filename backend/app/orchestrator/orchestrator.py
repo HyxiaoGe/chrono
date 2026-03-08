@@ -82,7 +82,10 @@ _PROGRESS_MESSAGES: dict[str, dict[str, str]] = {
 _proposal_agent = Agent(
     resolve_model(settings.orchestrator_model),
     output_type=ResearchProposal,
-    instructions="""\
+    instructions=(
+        "当前日期：" + date.today().isoformat()
+        + "。请确保调研时间范围覆盖到当前时间。\n\n"
+        """\
 你是 Chrono 调研系统的策略规划专家。给定一个 topic，你需要分析它并生成一份结构化的调研提案。
 
 ## 你的任务
@@ -189,13 +192,13 @@ _proposal_agent = Agent(
   - Phase A: 萌芽期 (1943-1980) → threads: [理论突破, 早期应用]
   - Phase B: 寒冬与复苏 (1980-2006) → threads: [技术路线, 产业尝试]
   - Phase C: 深度学习崛起 (2006-2017) → threads: [技术突破, 商业化]
-  - Phase D: 大模型时代 (2017-2025) → threads: [模型迭代, 伦理监管]
+  - Phase D: 大模型时代 (2017-至今) → threads: [模型迭代, 伦理监管]
 
 ## 语言规则
 
 - 检测输入 topic 的语言，设置 language 字段
 - 所有文本字段（包括 user_facing、research_phases 的 name/description）使用 topic 的语言
-- 英文 topic → 英文输出，中文 topic → 中文输出""",
+- 英文 topic → 英文输出，中文 topic → 中文输出"""),
     retries=2,
 )
 
@@ -472,12 +475,15 @@ async def _merge_and_dedup(nodes: list[SkeletonNode], language: str) -> list[Ske
 
 # --- Hallucination filter ---
 
+_RECENT_CUTOFF = str(date.today().year - 1)
+
 _hallucination_agent = Agent(
     resolve_model(settings.hallucination_model),
     output_type=HallucinationCheckResult,
-    instructions="""\
-You are a fact-checking specialist. You will receive a list of recent \
-timeline events (from 2025 onward) along with their search reference materials.
+    instructions=(
+        "You are a fact-checking specialist. You will receive a list of recent "
+        "timeline events (from " + _RECENT_CUTOFF + " onward) "
+        """along with their search reference materials.
 
 Your job: determine which events have NO evidence of actually having occurred \
 in the search references.
@@ -491,7 +497,7 @@ actually happening
   - The search references describe it as a future plan, not a completed event
 - When in doubt, keep the event (false negatives are better than false positives)
 - Return remove_ids as the list of node IDs to remove
-- Return reasons mapping each removed node ID to a brief explanation""",
+- Return reasons mapping each removed node ID to a brief explanation"""),
     retries=1,
 )
 
@@ -639,7 +645,7 @@ class Orchestrator:
         self, nodes: list[dict], detail_contexts: dict[str, str], topic: str
     ) -> list[dict]:
         # --- Check all recent nodes ---
-        recent = [n for n in nodes if n["date"] >= "2025"]
+        recent = [n for n in nodes if n["date"] >= _RECENT_CUTOFF]
         if recent:
             lines = []
             for node in recent:
@@ -670,7 +676,7 @@ class Orchestrator:
         return nodes
 
     async def _spot_check_historical(self, nodes: list[dict], topic: str) -> list[dict]:
-        historical = [n for n in nodes if n["date"] < "2025"]
+        historical = [n for n in nodes if n["date"] < _RECENT_CUTOFF]
         if not historical:
             return nodes
 
@@ -785,7 +791,7 @@ class Orchestrator:
                         return
                 detail_completed += 1
                 node["details"] = detail.model_dump()
-                if node["date"] >= "2025":
+                if node["date"] >= _RECENT_CUTOFF:
                     detail_contexts[node["id"]] = search_context
                 await session.push(
                     SSEEventType.NODE_DETAIL,
