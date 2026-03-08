@@ -105,12 +105,12 @@ export function DetailPanel({
       />
 
       <div
-        className={`relative h-full w-full max-w-[420px] overflow-y-auto border-l border-chrono-border bg-chrono-bg/95 backdrop-blur-md ${
+        className={`relative flex h-full w-full max-w-[420px] flex-col border-l border-chrono-border bg-chrono-bg/95 backdrop-blur-md ${
           closing ? "animate-slide-out-right" : "animate-slide-in-right"
         }`}
       >
         {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-chrono-border bg-chrono-bg/90 px-6 py-4 backdrop-blur-sm">
+        <div className="shrink-0 flex items-center justify-between border-b border-chrono-border bg-chrono-bg/90 px-6 py-4">
           <div className="flex items-center gap-3">
             <span className="text-chrono-caption text-chrono-text-muted">
               {displayNode.date}
@@ -140,6 +140,7 @@ export function DetailPanel({
           </button>
         </div>
 
+        <div className="flex-1 overflow-y-auto">
         <div className="space-y-6 px-6 py-6">
           {/* Title + subtitle + tags */}
           <div>
@@ -359,6 +360,7 @@ export function DetailPanel({
               <div className="shimmer h-3 w-3/5 rounded" />
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>
