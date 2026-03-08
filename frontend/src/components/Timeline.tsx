@@ -192,35 +192,24 @@ function SynthesisBlock({
         {synthesisData.key_insight}
       </p>
 
-      {/* Stats dashboard */}
-      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-chrono-tiny text-chrono-text-muted">
-        <span>
-          <span className="text-chrono-text">{nodes.length}</span>{" "}
-          {isZh ? "节点" : "nodes"}
+      {/* Stats */}
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        <span className="rounded-full bg-chrono-bg/60 border border-chrono-border/30 px-2.5 py-0.5 text-chrono-tiny text-chrono-text-muted">
+          <span className="text-chrono-text">{nodes.length}</span> {isZh ? "节点" : "nodes"}
         </span>
-        <span>
-          <span className="text-chrono-text">
-            {synthesisData.source_count}
-          </span>{" "}
-          {isZh ? "来源" : "sources"}
+        <span className="rounded-full bg-chrono-bg/60 border border-chrono-border/30 px-2.5 py-0.5 text-chrono-tiny text-chrono-text-muted">
+          <span className="text-chrono-text">{synthesisData.source_count}</span> {isZh ? "来源" : "sources"}
         </span>
         {connections && connections.length > 0 && (
-          <span>
-            <span className="text-chrono-text">
-              {connections.length}
-            </span>{" "}
-            {isZh ? "因果关系" : "connections"}
+          <span className="rounded-full bg-chrono-bg/60 border border-chrono-border/30 px-2.5 py-0.5 text-chrono-tiny text-chrono-text-muted">
+            <span className="text-chrono-text">{connections.length}</span> {isZh ? "关联" : "connections"}
           </span>
         )}
-        {dateCorrections && dateCorrections.length > 0 && (
-          <span>
-            <span className="text-chrono-text">
-              {dateCorrections.length}
-            </span>{" "}
-            {isZh ? "日期修正" : "corrections"}
+        {synthesisData.timeline_span && (
+          <span className="rounded-full bg-chrono-bg/60 border border-chrono-border/30 px-2.5 py-0.5 text-chrono-tiny text-chrono-text-muted">
+            {synthesisData.timeline_span}
           </span>
         )}
-        <span>{synthesisData.timeline_span}</span>
       </div>
 
       {/* Verification notes — collapsible */}
@@ -315,6 +304,17 @@ export function Timeline({
 
   const connections = synthesisData?.connections;
   const dateCorrections = synthesisData?.date_corrections;
+
+  const connectedNodeIds = useMemo(() => {
+    if (!selectedNodeId) return null;
+    const info = connectionMap.get(selectedNodeId);
+    if (!info) return null;
+    const ids = new Set<string>();
+    ids.add(selectedNodeId);
+    for (const c of info.outgoing) ids.add(c.targetId);
+    for (const c of info.incoming) ids.add(c.sourceId);
+    return ids.size > 1 ? ids : null;
+  }, [selectedNodeId, connectionMap]);
 
   return (
     <div id="chrono-timeline" className="mx-auto max-w-3xl px-4 py-8">
@@ -413,6 +413,7 @@ export function Timeline({
                   nodes={nodes}
                   selectedNodeId={selectedNodeId}
                   highlightedNodeId={highlightedNodeId}
+                  connectedNodeIds={connectedNodeIds}
                   onSelectNode={onSelectNode}
                   connectionMap={connectionMap}
                   language={language}
@@ -483,6 +484,7 @@ export function Timeline({
                     node={node}
                     isSelected={selectedNodeId === node.id}
                     isHighlighted={highlightedNodeId === node.id}
+                    isDimmed={connectedNodeIds !== null && !connectedNodeIds.has(node.id)}
                     connectionCount={connCount}
                     onSelect={onSelectNode}
                     language={language}

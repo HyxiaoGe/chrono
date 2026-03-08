@@ -7,6 +7,7 @@ interface Props {
   node: TimelineNode;
   isSelected: boolean;
   isHighlighted: boolean;
+  isDimmed: boolean;
   connectionCount: number;
   onSelect: (id: string) => void;
   language: string;
@@ -27,6 +28,7 @@ export function TimelineNodeCard({
   node,
   isSelected,
   isHighlighted,
+  isDimmed,
   connectionCount,
   onSelect,
   language,
@@ -37,6 +39,7 @@ export function TimelineNodeCard({
 
   const highlightClass = isHighlighted ? "animate-highlight" : "";
   const selectedClass = isSelected ? "ring-2 ring-chrono-accent/40" : "";
+  const dimClass = isDimmed ? "opacity-40" : "";
 
   if (!isComplete) {
     return <SkeletonCard node={node} sig={sig} />;
@@ -46,7 +49,7 @@ export function TimelineNodeCard({
 
   const meta =
     details && (details.location || (details.tags && details.tags.length > 0)) ? (
-      <div className="mt-2 flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {details.location && (
           <span className="text-chrono-tiny text-chrono-text-muted">
             {details.location}
@@ -65,16 +68,16 @@ export function TimelineNodeCard({
 
   const badge =
     connectionCount > 0 ? (
-      <div className="mt-2 text-chrono-tiny text-chrono-text-muted opacity-0 transition-opacity group-hover:opacity-100">
-        {"◈ "}
-        {connectionCount} {isZh ? "个关联" : "connections"}
-      </div>
+      <span className="inline-flex items-center gap-1 text-chrono-tiny text-chrono-text-muted/60">
+        <span className="text-chrono-accent/50">◈</span>
+        {connectionCount}
+      </span>
     ) : null;
 
   if (sig === "revolutionary") {
     return (
       <div
-        className={`group animate-fade-in cursor-pointer rounded-xl border-l-4 border-chrono-revolutionary bg-chrono-surface-hover p-6 shadow-md shadow-chrono-revolutionary/10 transition-all ${selectedClass} ${highlightClass}`}
+        className={`group animate-fade-in cursor-pointer rounded-xl border-l-4 border-chrono-revolutionary bg-chrono-surface-hover p-6 shadow-md shadow-chrono-revolutionary/10 transition-all ${selectedClass} ${highlightClass} ${dimClass}`}
         onClick={() => onSelect(node.id)}
       >
         <h3 className="text-chrono-subtitle font-semibold text-chrono-revolutionary">
@@ -88,8 +91,12 @@ export function TimelineNodeCard({
         <p className="mt-2 text-chrono-body text-chrono-text-secondary">
           {node.description}
         </p>
-        {meta}
-        {badge}
+        {(meta || badge) && (
+          <div className="mt-2 flex items-center gap-3">
+            {meta}
+            {badge && <span className="ml-auto">{badge}</span>}
+          </div>
+        )}
       </div>
     );
   }
@@ -97,31 +104,39 @@ export function TimelineNodeCard({
   if (sig === "high") {
     return (
       <div
-        className={`group animate-fade-in cursor-pointer rounded-xl border border-chrono-border bg-chrono-surface p-5 transition-all hover:border-chrono-border-active ${selectedClass} ${highlightClass}`}
+        className={`group animate-fade-in cursor-pointer rounded-xl border border-chrono-border bg-chrono-surface p-5 transition-all hover:border-chrono-border-active ${selectedClass} ${highlightClass} ${dimClass}`}
         onClick={() => onSelect(node.id)}
       >
         <h3 className="font-semibold text-chrono-text">{node.title}</h3>
         <p className="mt-1.5 text-chrono-body text-chrono-text-secondary line-clamp-2">
           {node.description}
         </p>
-        {meta}
-        {badge}
+        {(meta || badge) && (
+          <div className="mt-2 flex items-center gap-3">
+            {meta}
+            {badge && <span className="ml-auto">{badge}</span>}
+          </div>
+        )}
       </div>
     );
   }
 
-  // medium — borderless text row
+  // medium
   return (
     <div
-      className={`group animate-fade-in cursor-pointer px-4 py-2 transition-all hover:bg-chrono-surface/50 ${selectedClass} ${highlightClass}`}
+      className={`group animate-fade-in cursor-pointer rounded-lg border-l-2 border-chrono-medium/30 px-4 py-2 transition-all hover:bg-chrono-surface/50 ${selectedClass} ${highlightClass} ${dimClass}`}
       onClick={() => onSelect(node.id)}
     >
       <h3 className="font-medium text-chrono-text-secondary">{node.title}</h3>
       <p className="mt-0.5 text-chrono-caption text-chrono-text-muted line-clamp-1">
         {node.description}
       </p>
-      {meta}
-      {badge}
+      {(meta || badge) && (
+        <div className="mt-1 flex items-center gap-3">
+          {meta}
+          {badge && <span className="ml-auto">{badge}</span>}
+        </div>
+      )}
     </div>
   );
 }

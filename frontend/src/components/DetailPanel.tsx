@@ -1,10 +1,24 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { ExternalLink } from "lucide-react";
 import type { TimelineNode } from "@/types";
 import type { ConnectionMap } from "@/hooks/useConnections";
 import { connectionTypeColor } from "./TimelineNode";
 import { tagLabel } from "@/utils/tags";
+
+function formatSourceUrl(url: string): { display: string; domain: string } {
+  try {
+    const u = new URL(url);
+    const domain = u.hostname.replace(/^www\./, "");
+    const path = u.pathname.length > 1 ? u.pathname.slice(1) : "";
+    const decoded = decodeURIComponent(path);
+    const short = decoded.length > 40 ? decoded.slice(0, 37) + "…" : decoded;
+    return { display: short ? `${domain} › ${short}` : domain, domain };
+  } catch {
+    return { display: url, domain: "" };
+  }
+}
 
 const LABELS: Record<string, Record<string, string>> = {
   key_features: { zh: "关键特性", en: "Key Features" },
@@ -75,6 +89,7 @@ export function DetailPanel({
 
   const sig = displayNode.significance;
   const details = displayNode.details;
+  const isZh = language.startsWith("zh");
   const connInfo = connectionMap.get(displayNode.id);
   const hasConnections =
     connInfo &&
@@ -239,64 +254,100 @@ export function DetailPanel({
 
               {hasConnections && (
                 <DetailSection title={label("connections", language)}>
-                  <div className="space-y-2">
-                    {connInfo.outgoing.map((conn, i) => (
-                      <button
-                        key={`out-${i}`}
-                        onClick={() => onNavigateToNode(conn.targetId)}
-                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-chrono-surface-hover"
-                      >
-                        <span className="text-chrono-tiny text-chrono-text-muted">
-                          →
-                        </span>
-                        <span className="min-w-0 flex-1 truncate text-chrono-caption text-chrono-text-secondary">
-                          {conn.targetTitle}
-                        </span>
-                        <span
-                          className={`shrink-0 rounded-full px-1.5 py-0.5 text-chrono-tiny ${connectionTypeColor(conn.type)}`}
-                        >
-                          {conn.type}
-                        </span>
-                      </button>
-                    ))}
-                    {connInfo.incoming.map((conn, i) => (
-                      <button
-                        key={`in-${i}`}
-                        onClick={() => onNavigateToNode(conn.sourceId)}
-                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-chrono-surface-hover"
-                      >
-                        <span className="text-chrono-tiny text-chrono-text-muted">
-                          ←
-                        </span>
-                        <span className="min-w-0 flex-1 truncate text-chrono-caption text-chrono-text-secondary">
-                          {conn.sourceTitle}
-                        </span>
-                        <span
-                          className={`shrink-0 rounded-full px-1.5 py-0.5 text-chrono-tiny ${connectionTypeColor(conn.type)}`}
-                        >
-                          {conn.type}
-                        </span>
-                      </button>
-                    ))}
+                  <div className="space-y-3">
+                    {connInfo.outgoing.length > 0 && (
+                      <div>
+                        <div className="mb-1.5 text-chrono-tiny text-chrono-text-muted/60">
+                          {isZh ? "→ 影响了" : "→ Led to"}
+                        </div>
+                        <div className="space-y-1">
+                          {connInfo.outgoing.map((conn, i) => (
+                            <button
+                              key={`out-${i}`}
+                              onClick={() => onNavigateToNode(conn.targetId)}
+                              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-chrono-surface-hover"
+                              title={conn.relationship}
+                            >
+                              <span className="min-w-0 flex-1 text-chrono-caption text-chrono-text-secondary">
+                                <span className="truncate">{conn.targetTitle}</span>
+                                {conn.relationship && (
+                                  <span className="mt-0.5 block truncate text-chrono-tiny text-chrono-text-muted/50">
+                                    {conn.relationship}
+                                  </span>
+                                )}
+                              </span>
+                              <span
+                                className={`shrink-0 rounded-full px-1.5 py-0.5 text-chrono-tiny ${connectionTypeColor(conn.type)}`}
+                              >
+                                {conn.type.replace("_", " ")}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {connInfo.incoming.length > 0 && (
+                      <div>
+                        <div className="mb-1.5 text-chrono-tiny text-chrono-text-muted/60">
+                          {isZh ? "← 受影响于" : "← Influenced by"}
+                        </div>
+                        <div className="space-y-1">
+                          {connInfo.incoming.map((conn, i) => (
+                            <button
+                              key={`in-${i}`}
+                              onClick={() => onNavigateToNode(conn.sourceId)}
+                              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-chrono-surface-hover"
+                              title={conn.relationship}
+                            >
+                              <span className="min-w-0 flex-1 text-chrono-caption text-chrono-text-secondary">
+                                <span className="truncate">{conn.sourceTitle}</span>
+                                {conn.relationship && (
+                                  <span className="mt-0.5 block truncate text-chrono-tiny text-chrono-text-muted/50">
+                                    {conn.relationship}
+                                  </span>
+                                )}
+                              </span>
+                              <span
+                                className={`shrink-0 rounded-full px-1.5 py-0.5 text-chrono-tiny ${connectionTypeColor(conn.type)}`}
+                              >
+                                {conn.type.replace("_", " ")}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </DetailSection>
               )}
 
               {displayNode.sources.length > 0 && (
                 <DetailSection title={label("sources", language)}>
-                  <ul className="space-y-1">
-                    {displayNode.sources.map((url, i) => (
-                      <li key={i}>
-                        <a
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="block truncate text-chrono-tiny text-chrono-text-muted transition-colors hover:text-chrono-text-secondary"
-                        >
-                          {url}
-                        </a>
-                      </li>
-                    ))}
+                  <ul className="space-y-1.5">
+                    {displayNode.sources.map((url, i) => {
+                      const { display, domain } = formatSourceUrl(url);
+                      return (
+                        <li key={i}>
+                          <a
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 rounded-md px-2 py-1 text-chrono-tiny transition-colors hover:bg-chrono-surface-hover group/source"
+                          >
+                            <span className="min-w-0 flex-1 truncate text-chrono-text-muted group-hover/source:text-chrono-text-secondary">
+                              {domain && (
+                                <span className="text-chrono-text-secondary">{domain.split("/")[0]}</span>
+                              )}
+                              {display.includes("›") && (
+                                <span className="text-chrono-text-muted"> › {display.split("›")[1]?.trim()}</span>
+                              )}
+                              {!display.includes("›") && !domain && display}
+                            </span>
+                            <ExternalLink size={12} className="shrink-0 text-chrono-text-muted/40 group-hover/source:text-chrono-text-muted" />
+                          </a>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </DetailSection>
               )}

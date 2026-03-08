@@ -26,11 +26,18 @@ export function MiniMap({
     ? `${firstYear} – ${lastYear}`
     : firstYear;
 
+  const completedCount = nodes.filter((n) => n.status === "complete").length;
+  const totalCount = nodes.length;
+
   return (
     <div
       className="fixed right-4 bottom-4 z-30 hidden items-center gap-2 rounded-lg border border-chrono-border bg-chrono-surface/95 px-3 py-2 backdrop-blur-sm lg:flex"
       data-export-hide
     >
+      <span className="text-chrono-tiny text-chrono-text-muted">
+        <span className="text-chrono-text">{completedCount}</span>/{totalCount}
+      </span>
+      <span className="text-chrono-tiny text-chrono-text-muted/30">|</span>
       {activeYear && (
         <span className="text-chrono-caption font-medium text-chrono-text">
           {activeYear}

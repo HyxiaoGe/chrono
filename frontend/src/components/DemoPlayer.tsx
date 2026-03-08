@@ -279,6 +279,7 @@ function DemoTimeline({
                   node={node}
                   isSelected={false}
                   isHighlighted={false}
+                  isDimmed={false}
                   connectionCount={0}
                   onSelect={() => {}}
                   language={locale === "zh" ? "zh" : "en"}
