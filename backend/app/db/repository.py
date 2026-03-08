@@ -10,6 +10,8 @@ from app.db.models import ResearchRow, TimelineNodeRow
 from app.models.research import ResearchProposal
 from app.utils.topic import normalize_topic
 
+_LIKE_ESCAPE = str.maketrans({"%": "\\%", "_": "\\_"})
+
 
 async def get_research_by_topic(session: AsyncSession, topic: str) -> ResearchRow | None:
     normalized = normalize_topic(topic)
@@ -23,11 +25,26 @@ async def get_research_by_topic(session: AsyncSession, topic: str) -> ResearchRo
     stmt = select(ResearchRow).where(
         or_(
             ResearchRow.topic_normalized.contains(normalized),
-            ResearchRow.topic.ilike(f"%{topic.strip()}%"),
+            ResearchRow.topic.ilike(
+                f"%{topic.strip().translate(_LIKE_ESCAPE)}%", escape="\\"
+            ),
         )
     ).order_by(ResearchRow.created_at.desc())
     result = await session.execute(stmt)
     return result.scalars().first()
+
+
+async def list_topic_candidates(
+    session: AsyncSession, limit: int = 50
+) -> list[tuple[str, str, uuid.UUID]]:
+    stmt = (
+        select(ResearchRow.topic, ResearchRow.topic_normalized, ResearchRow.id)
+        .where(ResearchRow.total_nodes > 0)
+        .order_by(ResearchRow.created_at.desc())
+        .limit(limit)
+    )
+    result = await session.execute(stmt)
+    return list(result.all())
 
 
 async def get_nodes_for_research(

@@ -31,10 +31,16 @@ export interface ResearchProposal {
   };
 }
 
+export interface SimilarTopicMatch {
+  topic: string;
+  research_id: string;
+}
+
 export interface ResearchProposalResponse {
-  session_id: string;
-  proposal: ResearchProposal;
+  session_id: string | null;
+  proposal: ResearchProposal | null;
   cached: boolean;
+  similar_topic: SimilarTopicMatch | null;
 }
 
 // --- SSE event data types ---

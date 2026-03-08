@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from sse_starlette import EventSourceResponse
 
+from app.agents.similar_topic import find_similar_topic
 from app.data.recommended import RECOMMENDED_TOPICS
 from app.db.database import async_session_factory, engine
 from app.db.redis import (
@@ -18,12 +19,13 @@ from app.db.redis import (
     update_session_status,
 )
 from app.db.replay import replay_research
-from app.db.repository import get_research_by_topic, list_researches
+from app.db.repository import get_research_by_topic, list_researches, list_topic_candidates
 from app.models.research import (
     ErrorResponse,
     ResearchProposal,
     ResearchProposalResponse,
     ResearchRequest,
+    SimilarTopicMatch,
 )
 from app.models.session import SessionManager, SessionStatus
 from app.orchestrator.orchestrator import Orchestrator
@@ -121,6 +123,30 @@ async def create_research(request: ResearchRequest) -> ResearchProposalResponse:
                 )
         except Exception:
             logger.warning("DB cache lookup failed, falling back")
+
+    # Layer 1.5: LLM similar topic detection (skip if force=True)
+    if not request.force and async_session_factory is not None:
+        try:
+            async with async_session_factory() as db:
+                candidates = await list_topic_candidates(db)
+            if candidates:
+                existing_topics = [c[0] for c in candidates]
+                matched = await find_similar_topic(request.topic, existing_topics)
+                if matched:
+                    match_row = next(c for c in candidates if c[0] == matched)
+                    logger.info(
+                        "Similar topic found: '%s' ≈ '%s'",
+                        request.topic,
+                        matched,
+                    )
+                    return ResearchProposalResponse(
+                        similar_topic=SimilarTopicMatch(
+                            topic=matched,
+                            research_id=str(match_row[2]),
+                        ),
+                    )
+        except Exception:
+            logger.warning("Similar topic check failed, falling back")
 
     # Layer 2: Redis proposal cache (generated but not yet researched)
     cached_dict = await get_cached_proposal(normalized)

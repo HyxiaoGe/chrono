@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type {
   ResearchProposal,
+  SimilarTopicMatch,
   TimelineNode,
   SynthesisData,
   CompleteData,
@@ -21,6 +22,7 @@ import { ProposalCard } from "./ProposalCard";
 import { Timeline } from "./Timeline";
 import { DetailPanel } from "./DetailPanel";
 import { MiniMap } from "./MiniMap";
+import { SimilarTopicCard } from "./SimilarTopicCard";
 
 const ACTIVE_SESSION_KEY = "chrono-active-session";
 
@@ -45,7 +47,7 @@ function clearActiveSession(): void {
   }
 }
 
-type SessionPhase = "loading" | "proposal" | "research" | "error";
+type SessionPhase = "loading" | "similar" | "proposal" | "research" | "error";
 
 interface Props {
   sessionId: string;
@@ -68,6 +70,9 @@ export function SessionView({ sessionId }: Props) {
   const [progressMessage, setProgressMessage] = useState("");
   const [synthesisData, setSynthesisData] = useState<SynthesisData | null>(null);
   const [completeData, setCompleteData] = useState<CompleteData | null>(null);
+
+  const [similarTopic, setSimilarTopic] = useState<SimilarTopicMatch | null>(null);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
@@ -98,6 +103,12 @@ export function SessionView({ sessionId }: Props) {
           return res.json();
         })
         .then((data) => {
+          if (data.similar_topic) {
+            setSimilarTopic(data.similar_topic);
+            setPhase("similar");
+            return;
+          }
+
           const sid: string = data.session_id;
           setRealSessionId(sid);
           setProposal(data.proposal);
@@ -162,6 +173,69 @@ export function SessionView({ sessionId }: Props) {
   function handleNewResearch() {
     clearActiveSession();
     router.push("/app");
+  }
+
+  function handleViewSimilar() {
+    if (!similarTopic || isNavigating) return;
+    setIsNavigating(true);
+    fetch("/api/research", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ topic: similarTopic.topic, language: "auto" }),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        const sid: string = data.session_id;
+        setRealSessionId(sid);
+        setProposal(data.proposal);
+        window.history.replaceState(null, "", `/app/session/${sid}`);
+
+        if (data.cached) {
+          setActiveSession({ sessionId: sid, topic: data.proposal.topic });
+          setStreamSessionId(sid);
+          setPhase("research");
+        } else {
+          // Fallback: DB record may have been deleted
+          setPhase("proposal");
+        }
+      })
+      .catch(() => {
+        setIsNavigating(false);
+        setPhase("error");
+        setError("Failed to load research.");
+      });
+  }
+
+  function handleForceNewResearch() {
+    const topic = searchParams.get("topic");
+    if (!topic || isNavigating) return;
+    setIsNavigating(true);
+    setPhase("loading");
+    fetch("/api/research", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ topic, language: "auto", force: true }),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        const sid: string = data.session_id;
+        setRealSessionId(sid);
+        setProposal(data.proposal);
+        window.history.replaceState(null, "", `/app/session/${sid}`);
+        setIsNavigating(false);
+        setPhase("proposal");
+      })
+      .catch(() => {
+        setIsNavigating(false);
+        setPhase("error");
+        setError("Failed to create research.");
+      });
   }
 
   const handleNavigateToNode = useCallback((targetId: string) => {
@@ -341,6 +415,19 @@ export function SessionView({ sessionId }: Props) {
           >
             {locale === "zh" ? "\u2190 返回首页" : "\u2190 Back to home"}
           </button>
+        </div>
+      )}
+
+      {phase === "similar" && similarTopic && (
+        <div className="animate-fade-in">
+          <SimilarTopicCard
+            originalTopic={searchParams.get("topic") ?? ""}
+            similarTopic={similarTopic.topic}
+            onViewExisting={handleViewSimilar}
+            onNewResearch={handleForceNewResearch}
+            isLoading={isNavigating}
+            locale={locale}
+          />
         </div>
       )}
 

@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     detail_model: str = "openrouter:deepseek/deepseek-chat"
     dedup_model: str = "openrouter:deepseek/deepseek-chat"
     hallucination_model: str = "openrouter:deepseek/deepseek-chat"
+    similar_topic_model: str = "openrouter:deepseek/deepseek-chat"
     gap_analysis_model: str = "openrouter:google/gemini-3-flash-preview"
     synthesizer_model: str = "openrouter:anthropic/claude-sonnet-4-5"
 

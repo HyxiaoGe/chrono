@@ -68,12 +68,19 @@ class ResearchProposal(BaseModel):
 class ResearchRequest(BaseModel):
     topic: str
     language: str = "auto"
+    force: bool = False
+
+
+class SimilarTopicMatch(BaseModel):
+    topic: str
+    research_id: str
 
 
 class ResearchProposalResponse(BaseModel):
-    session_id: str
-    proposal: ResearchProposal
+    session_id: str | None = None
+    proposal: ResearchProposal | None = None
     cached: bool = False
+    similar_topic: SimilarTopicMatch | None = None
 
 
 class ErrorResponse(BaseModel):
