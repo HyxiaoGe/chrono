@@ -51,6 +51,33 @@ def _build_detail_pool() -> list:
 
 _detail_pool = _build_detail_pool()
 
+
+def _friendly_model_name(model_string: str) -> str:
+    """Extract a readable model name from config string.
+
+    "openrouter:deepseek/deepseek-chat" → "DeepSeek"
+    "openrouter:google/gemini-3-flash-preview" → "Gemini 3 Flash"
+    "openrouter:anthropic/claude-sonnet-4-5" → "Claude Sonnet 4.5"
+    """
+    # Strip provider prefix
+    if ":" in model_string:
+        model_string = model_string.split(":", 1)[1]
+    # Strip org prefix
+    if "/" in model_string:
+        model_string = model_string.split("/", 1)[1]
+
+    _NAME_MAP: dict[str, str] = {
+        "deepseek-chat": "DeepSeek",
+        "deepseek-reasoner": "DeepSeek R1",
+    }
+    if model_string in _NAME_MAP:
+        return _NAME_MAP[model_string]
+
+    # General: "claude-sonnet-4-5" → "Claude Sonnet 4.5"
+    # "gemini-3-flash-preview" → "Gemini 3 Flash"
+    name = model_string.replace("-preview", "").replace("-", " ").title()
+    return name
+
 _PROGRESS_MESSAGES: dict[str, dict[str, str]] = {
     "skeleton": {
         "zh": "正在构建时间线骨架...",
@@ -66,6 +93,21 @@ _PROGRESS_MESSAGES: dict[str, dict[str, str]] = {
         "zh": "正在分析时间线完整性...",
         "en": "Analyzing timeline completeness...",
         "ja": "タイムラインの完全性を分析中...",
+    },
+    "analysis_hallucination": {
+        "zh": "正在验证事实准确性...",
+        "en": "Verifying factual accuracy...",
+        "ja": "事実の正確性を検証中...",
+    },
+    "analysis_gap": {
+        "zh": "正在检测遗漏事件...",
+        "en": "Detecting missing events...",
+        "ja": "欠落イベントを検出中...",
+    },
+    "analysis_gap_found": {
+        "zh": "发现 {count} 个遗漏事件，补充中...",
+        "en": "Found {count} missing events, enriching...",
+        "ja": "{count} 件の欠落イベントを発見、補充中...",
     },
     "synthesis": {
         "zh": "正在生成调研总结...",
@@ -748,6 +790,7 @@ class Orchestrator:
                     "phase": "skeleton",
                     "message": _get_progress_message("skeleton", proposal.language),
                     "percent": 0,
+                    "model": _friendly_model_name(settings.milestone_model),
                 },
             )
 
@@ -762,6 +805,7 @@ class Orchestrator:
                     "phase": "detail",
                     "message": _get_progress_message("detail", proposal.language),
                     "percent": 0,
+                    "model": _friendly_model_name(settings.detail_model),
                 },
             )
 
@@ -775,9 +819,25 @@ class Orchestrator:
                 nonlocal detail_completed, pool_counter
                 async with sem:
                     model_override = None
+                    model_name_str = settings.detail_model
                     if _detail_pool:
-                        model_override = _detail_pool[pool_counter % len(_detail_pool)]
+                        idx = pool_counter % len(_detail_pool)
+                        model_override = _detail_pool[idx]
+                        pool_parts = settings.detail_model_pool.split(",")
+                        if idx < len(pool_parts):
+                            model_name_str = pool_parts[idx].strip()
                         pool_counter += 1
+
+                    friendly = _friendly_model_name(model_name_str)
+                    await session.push(
+                        SSEEventType.NODE_PROGRESS,
+                        {
+                            "node_id": node["id"],
+                            "model": friendly,
+                            "step": "searching",
+                        },
+                    )
+
                     try:
                         detail, search_context = await run_detail_agent(
                             node=node,
@@ -815,15 +875,38 @@ class Orchestrator:
                     "phase": "analysis",
                     "message": _get_progress_message("analysis", proposal.language),
                     "percent": 0,
+                    "model": _friendly_model_name(settings.gap_analysis_model),
                 },
             )
 
             gap_connections: list = []
             try:
                 # Step 3a: Hallucination filter
+                await session.push(
+                    SSEEventType.PROGRESS,
+                    {
+                        "phase": "analysis",
+                        "message": _get_progress_message(
+                            "analysis_hallucination", proposal.language
+                        ),
+                        "percent": 0,
+                        "model": _friendly_model_name(settings.hallucination_model),
+                    },
+                )
                 nodes = await self._filter_hallucinations(nodes, detail_contexts, proposal.topic)
 
                 # Step 3b: Gap analysis + connections
+                await session.push(
+                    SSEEventType.PROGRESS,
+                    {
+                        "phase": "analysis",
+                        "message": _get_progress_message(
+                            "analysis_gap", proposal.language
+                        ),
+                        "percent": 0,
+                        "model": _friendly_model_name(settings.gap_analysis_model),
+                    },
+                )
                 gap_result = await self._run_gap_analysis(nodes, proposal)
                 gap_connections = gap_result.connections
 
@@ -849,6 +932,17 @@ class Orchestrator:
 
                 # Enrich gap nodes
                 if new_nodes:
+                    await session.push(
+                        SSEEventType.PROGRESS,
+                        {
+                            "phase": "analysis",
+                            "message": _get_progress_message(
+                                "analysis_gap_found", proposal.language
+                            ).format(count=len(new_nodes)),
+                            "percent": 0,
+                            "model": _friendly_model_name(settings.detail_model),
+                        },
+                    )
                     async with asyncio.TaskGroup() as tg:
                         for node in new_nodes:
                             tg.create_task(_enrich_node(node))
@@ -867,6 +961,7 @@ class Orchestrator:
                     "phase": "synthesis",
                     "message": _get_progress_message("synthesis", proposal.language),
                     "percent": 0,
+                    "model": _friendly_model_name(settings.synthesizer_model),
                 },
             )
 

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import type {
   ProgressData,
+  NodeProgressData,
   SkeletonNodeData,
   NodeDetailEvent,
   SynthesisData,
@@ -11,6 +12,7 @@ import type {
 
 interface StreamCallbacks {
   onProgress?: (data: ProgressData) => void;
+  onNodeProgress?: (data: NodeProgressData) => void;
   onSkeleton?: (data: { nodes: SkeletonNodeData[]; partial?: boolean }) => void;
   onNodeDetail?: (data: NodeDetailEvent) => void;
   onSynthesis?: (data: SynthesisData) => void;
@@ -53,6 +55,9 @@ export function useResearchStream(
       }
 
       listen<ProgressData>("progress", (d) => cbRef.current.onProgress?.(d));
+      listen<NodeProgressData>("node_progress", (d) =>
+        cbRef.current.onNodeProgress?.(d),
+      );
       listen<{ nodes: SkeletonNodeData[]; partial?: boolean }>("skeleton", (d) =>
         cbRef.current.onSkeleton?.(d),
       );

@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type {
   TimelineNode,
   SynthesisData,
   CompleteData,
   ResearchProposal,
+  NodeProgressData,
 } from "@/types";
 import type { ConnectionMap } from "@/hooks/useConnections";
 import type { PhaseGroup } from "@/utils/timeline";
@@ -26,6 +27,10 @@ interface Props {
   onSelectNode: (id: string) => void;
   connectionMap: ConnectionMap;
   phaseGroups: PhaseGroup[];
+  researchPhase: string;
+  researchModel: string;
+  researchStartTime: number;
+  nodeProgressMap: Map<string, NodeProgressData>;
 }
 
 // --- Year separators ---
@@ -254,6 +259,106 @@ function SynthesisBlock({
   );
 }
 
+// --- Research progress indicator ---
+
+const PHASES = [
+  { key: "skeleton", zh: "构建骨架", en: "Skeleton" },
+  { key: "detail", zh: "补充详情", en: "Detail" },
+  { key: "analysis", zh: "完整性分析", en: "Analysis" },
+  { key: "synthesis", zh: "生成总结", en: "Synthesis" },
+];
+
+function ResearchProgress({
+  phase,
+  model,
+  startTime,
+  nodes,
+  progressMessage,
+  isZh,
+}: {
+  phase: string;
+  model: string;
+  startTime: number;
+  nodes: TimelineNode[];
+  progressMessage: string;
+  isZh: boolean;
+}) {
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => setElapsed(Math.floor((Date.now() - startTime) / 1000)), 1000);
+    return () => clearInterval(timer);
+  }, [startTime]);
+
+  const currentIdx = PHASES.findIndex((p) => p.key === phase);
+  const completed = nodes.filter((n) => n.status === "complete").length;
+  const total = nodes.length;
+
+  const minutes = Math.floor(elapsed / 60);
+  const seconds = elapsed % 60;
+  const timeStr = minutes > 0
+    ? `${minutes}:${String(seconds).padStart(2, "0")}`
+    : `${seconds}s`;
+
+  return (
+    <div className="mb-6 rounded-lg border border-chrono-border bg-chrono-surface/50 px-5 py-3" data-export-hide>
+      {/* Phase steps */}
+      <div className="flex items-center gap-1">
+        {PHASES.map((p, i) => {
+          const isActive = p.key === phase;
+          const isDone = i < currentIdx;
+          return (
+            <div key={p.key} className="flex items-center gap-1">
+              {i > 0 && (
+                <div className={`h-px w-4 ${isDone ? "bg-chrono-accent" : "bg-chrono-border"}`} />
+              )}
+              <div className="flex items-center gap-1.5">
+                <div
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    isDone
+                      ? "bg-chrono-accent"
+                      : isActive
+                        ? "bg-chrono-accent animate-pulse"
+                        : "bg-chrono-border"
+                  }`}
+                />
+                <span
+                  className={`text-chrono-tiny ${
+                    isActive
+                      ? "text-chrono-accent font-medium"
+                      : isDone
+                        ? "text-chrono-text-secondary"
+                        : "text-chrono-text-muted/50"
+                  }`}
+                >
+                  {isZh ? p.zh : p.en}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Stats row */}
+      <div className="mt-2 flex items-center gap-3 text-chrono-tiny text-chrono-text-muted">
+        {model && (
+          <span className="rounded bg-chrono-accent/10 px-1.5 py-0.5 text-chrono-accent/70">
+            {model}
+          </span>
+        )}
+        {phase === "detail" && total > 0 ? (
+          <span>
+            {completed}/{total} {isZh ? "已完成" : "done"}
+          </span>
+        ) : progressMessage ? (
+          <span className="text-chrono-text-secondary">{progressMessage}</span>
+        ) : null}
+        <span className="ml-auto tabular-nums">{timeStr}</span>
+      </div>
+    </div>
+  );
+}
+
 // --- Main component ---
 
 export function Timeline({
@@ -268,11 +373,19 @@ export function Timeline({
   onSelectNode,
   connectionMap,
   phaseGroups,
+  researchPhase,
+  researchModel,
+  researchStartTime,
+  nodeProgressMap,
 }: Props) {
   const isZh = language.startsWith("zh");
   const separators = computeSeparators(nodes);
 
-  const denseGroups = useMemo(() => computeDenseGroups(nodes), [nodes]);
+  const isResearchDone = completeData !== null;
+  const denseGroups = useMemo(
+    () => (isResearchDone ? computeDenseGroups(nodes) : []),
+    [nodes, isResearchDone],
+  );
   const denseNodeSet = useMemo(
     () => new Set(denseGroups.flatMap((g) => g.nodeIds)),
     [denseGroups],
@@ -318,16 +431,16 @@ export function Timeline({
 
   return (
     <div id="chrono-timeline" className="mx-auto max-w-3xl px-4 py-8">
-      {/* Progress bar */}
-      {!completeData && progressMessage && (
-        <div className="mb-8" data-export-hide>
-          <div className="h-0.5 w-full overflow-hidden rounded-full bg-chrono-border">
-            <div className="h-full w-1/3 animate-indeterminate rounded-full bg-chrono-accent" />
-          </div>
-          <p className="mt-3 text-center text-chrono-caption text-chrono-text-muted">
-            {progressMessage}
-          </p>
-        </div>
+      {/* Research progress */}
+      {!completeData && researchPhase && (
+        <ResearchProgress
+          phase={researchPhase}
+          model={researchModel}
+          startTime={researchStartTime}
+          nodes={nodes}
+          progressMessage={progressMessage}
+          isZh={isZh}
+        />
       )}
 
       {/* Complete status */}
@@ -488,6 +601,7 @@ export function Timeline({
                     connectionCount={connCount}
                     onSelect={onSelectNode}
                     language={language}
+                    progress={nodeProgressMap.get(node.id)}
                   />
                 </div>
               </div>

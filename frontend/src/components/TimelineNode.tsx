@@ -1,6 +1,6 @@
 "use client";
 
-import type { TimelineNode } from "@/types";
+import type { TimelineNode, NodeProgressData } from "@/types";
 import { tagLabel } from "@/utils/tags";
 
 interface Props {
@@ -11,6 +11,7 @@ interface Props {
   connectionCount: number;
   onSelect: (id: string) => void;
   language: string;
+  progress?: NodeProgressData;
 }
 
 const CONNECTION_TYPE_COLORS: Record<string, string> = {
@@ -32,6 +33,7 @@ export function TimelineNodeCard({
   connectionCount,
   onSelect,
   language,
+  progress,
 }: Props) {
   const isComplete = node.status === "complete";
   const sig = node.significance;
@@ -42,7 +44,7 @@ export function TimelineNodeCard({
   const dimClass = isDimmed ? "opacity-40" : "";
 
   if (!isComplete) {
-    return <SkeletonCard node={node} sig={sig} />;
+    return <SkeletonCard node={node} sig={sig} progress={progress} isZh={isZh} />;
   }
 
   const details = node.details;
@@ -141,40 +143,100 @@ export function TimelineNodeCard({
   );
 }
 
-function SkeletonCard({ node, sig }: { node: TimelineNode; sig: string }) {
-  const isRev = sig === "revolutionary";
-  if (isRev) {
+function ActiveIndicator({
+  progress,
+  isZh,
+}: {
+  progress: NodeProgressData;
+  isZh: boolean;
+}) {
+  const stepText = progress.step === "searching"
+    ? (isZh ? "搜索中..." : "searching...")
+    : progress.step === "analyzing"
+      ? (isZh ? "分析中..." : "analyzing...")
+      : (isZh ? "生成中..." : "generating...");
+  return (
+    <div className="mt-3 flex items-center gap-2">
+      <span className="relative flex h-2 w-2">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-chrono-accent/60" />
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-chrono-accent" />
+      </span>
+      <span className="text-chrono-tiny font-medium text-chrono-accent/80">
+        {progress.model}
+      </span>
+      <span className="text-chrono-tiny text-chrono-text-muted">
+        {stepText}
+      </span>
+    </div>
+  );
+}
+
+function SkeletonCard({
+  node,
+  sig,
+  progress,
+  isZh,
+}: {
+  node: TimelineNode;
+  sig: string;
+  progress?: NodeProgressData;
+  isZh: boolean;
+}) {
+  const isActive = !!progress;
+  const activeClass = isActive
+    ? "border-chrono-accent/40 shadow-sm shadow-chrono-accent/10"
+    : "";
+
+  if (sig === "revolutionary") {
     return (
-      <div className="rounded-xl border border-chrono-revolutionary/60 bg-chrono-surface-hover p-6">
-        <div className="font-semibold text-chrono-text">{node.title}</div>
-        <div className="mt-3 space-y-2">
-          <div className="shimmer h-3 w-full rounded" />
-          <div className="shimmer h-3 w-4/5 rounded" />
-          <div className="shimmer h-3 w-3/5 rounded" />
+      <div className={`rounded-xl border bg-chrono-surface-hover p-6 transition-all duration-300 ${isActive ? activeClass : "border-chrono-revolutionary/30"}`}>
+        <div className={`text-chrono-subtitle font-semibold ${isActive ? "text-chrono-revolutionary/60" : "text-chrono-text/40"}`}>
+          {node.title}
         </div>
+        {isActive ? (
+          <ActiveIndicator progress={progress} isZh={isZh} />
+        ) : (
+          <div className="mt-3 space-y-2">
+            <div className="shimmer h-3 w-full rounded" />
+            <div className="shimmer h-3 w-4/5 rounded" />
+          </div>
+        )}
       </div>
     );
   }
+
   if (sig === "high") {
     return (
-      <div className="rounded-xl border border-chrono-border bg-chrono-surface p-5">
-        <div className="font-semibold text-chrono-text">{node.title}</div>
-        <div className="mt-3 space-y-2">
-          <div className="shimmer h-3 w-full rounded" />
-          <div className="shimmer h-3 w-4/5 rounded" />
-          <div className="shimmer h-3 w-3/5 rounded" />
+      <div className={`rounded-xl border bg-chrono-surface/50 p-5 transition-all duration-300 ${isActive ? activeClass : "border-chrono-border/40"}`}>
+        <div className={`font-semibold ${isActive ? "text-chrono-text" : "text-chrono-text/40"}`}>
+          {node.title}
         </div>
+        {isActive ? (
+          <ActiveIndicator progress={progress} isZh={isZh} />
+        ) : (
+          <div className="mt-3 space-y-2">
+            <div className="shimmer h-3 w-full rounded" />
+            <div className="shimmer h-3 w-4/5 rounded" />
+          </div>
+        )}
       </div>
     );
   }
-  // medium skeleton — no border/bg
+
+  // medium
   return (
-    <div className="px-4 py-2">
-      <div className="font-medium text-chrono-text-secondary">{node.title}</div>
-      <div className="mt-2 space-y-2">
-        <div className="shimmer h-3 w-full rounded" />
-        <div className="shimmer h-3 w-3/5 rounded" />
+    <div className={`rounded-lg px-4 py-2 transition-all duration-300 ${isActive ? "border border-chrono-accent/30 shadow-sm shadow-chrono-accent/5" : ""}`}>
+      <div className={`font-medium ${isActive ? "text-chrono-text-secondary" : "text-chrono-text-muted/40"}`}>
+        {node.title}
       </div>
+      {isActive ? (
+        <ActiveIndicator progress={progress} isZh={isZh} />
+      ) : (
+        <div className="mt-2 space-y-2">
+          <div className="shimmer h-3 w-full rounded" />
+          <div className="shimmer h-3 w-3/5 rounded" />
+        </div>
+      )}
     </div>
   );
 }

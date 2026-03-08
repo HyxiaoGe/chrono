@@ -171,6 +171,7 @@ class SynthesisResult(BaseModel):
 class SSEEventType(StrEnum):
     PROGRESS = "progress"
     SKELETON = "skeleton"
+    NODE_PROGRESS = "node_progress"
     NODE_DETAIL = "node_detail"
     SYNTHESIS = "synthesis"
     COMPLETE = "complete"

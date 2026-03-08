@@ -49,6 +49,13 @@ export interface ProgressData {
   phase: string;
   message: string;
   percent: number;
+  model?: string;
+}
+
+export interface NodeProgressData {
+  node_id: string;
+  model: string;
+  step: string;
 }
 
 export interface SkeletonNodeData {

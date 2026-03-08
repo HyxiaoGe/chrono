@@ -9,6 +9,7 @@ import type {
   SynthesisData,
   CompleteData,
   ProgressData,
+  NodeProgressData,
   SkeletonNodeData,
   NodeDetailEvent,
 } from "@/types";
@@ -77,6 +78,13 @@ export function SessionView({ sessionId }: Props) {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [researchPhase, setResearchPhase] = useState<string>("");
+  const [researchModel, setResearchModel] = useState<string>("");
+  const [researchStartTime] = useState<number>(Date.now());
+  const [nodeProgressMap, setNodeProgressMap] = useState<
+    Map<string, NodeProgressData>
+  >(new Map());
 
   // --- Init ---
   const didInit = useRef(false);
@@ -256,6 +264,8 @@ export function SessionView({ sessionId }: Props) {
   useResearchStream(streamSessionId, {
     onProgress: useCallback((data: ProgressData) => {
       setProgressMessage(data.message);
+      setResearchPhase(data.phase);
+      if (data.model) setResearchModel(data.model);
       if (data.phase === "detail") {
         setNodes((prev) =>
           prev.map((n) =>
@@ -263,6 +273,14 @@ export function SessionView({ sessionId }: Props) {
           ),
         );
       }
+    }, []),
+
+    onNodeProgress: useCallback((data: NodeProgressData) => {
+      setNodeProgressMap((prev) => {
+        const next = new Map(prev);
+        next.set(data.node_id, data);
+        return next;
+      });
     }, []),
 
     onSkeleton: useCallback(
@@ -312,6 +330,11 @@ export function SessionView({ sessionId }: Props) {
             : n,
         ),
       );
+      setNodeProgressMap((prev) => {
+        const next = new Map(prev);
+        next.delete(node_id);
+        return next;
+      });
     }, []),
 
     onSynthesis: useCallback((data: SynthesisData) => {
@@ -456,6 +479,10 @@ export function SessionView({ sessionId }: Props) {
             onSelectNode={setSelectedNodeId}
             connectionMap={connectionMap}
             phaseGroups={phaseGroups}
+            researchPhase={researchPhase}
+            researchModel={researchModel}
+            researchStartTime={researchStartTime}
+            nodeProgressMap={nodeProgressMap}
           />
         </div>
       )}
