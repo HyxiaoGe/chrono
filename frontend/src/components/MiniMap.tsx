@@ -26,7 +26,10 @@ export function MiniMap({
     ? `${firstYear} – ${lastYear}`
     : firstYear;
 
-  const completedCount = nodes.filter((n) => n.status === "complete").length;
+  const activeIndex = activeNodeId
+    ? nodes.findIndex((n) => n.id === activeNodeId)
+    : -1;
+  const currentPosition = activeIndex >= 0 ? activeIndex + 1 : null;
   const totalCount = nodes.length;
 
   return (
@@ -35,7 +38,7 @@ export function MiniMap({
       data-export-hide
     >
       <span className="text-chrono-tiny text-chrono-text-muted">
-        <span className="text-chrono-text">{completedCount}</span>/{totalCount}
+        <span className="text-chrono-text">{currentPosition ?? "–"}</span>/{totalCount}
       </span>
       <span className="text-chrono-tiny text-chrono-text-muted/30">|</span>
       {activeYear && (

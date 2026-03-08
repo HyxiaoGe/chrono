@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { TimelineNode } from "@/types";
 import type { DenseGroup } from "@/utils/timeline";
 import type { ConnectionMap } from "@/hooks/useConnections";
@@ -41,7 +41,9 @@ export function DenseGroupBlock({
   );
 
   const [manualExpanded, setManualExpanded] = useState(false);
+  const [prevManualExpanded, setPrevManualExpanded] = useState(false);
   const [prevNeedsAutoExpand, setPrevNeedsAutoExpand] = useState(false);
+  const groupRef = useRef<HTMLDivElement>(null);
 
   if (needsAutoExpand && !prevNeedsAutoExpand) {
     setManualExpanded(true);
@@ -51,6 +53,20 @@ export function DenseGroupBlock({
   }
 
   const expanded = manualExpanded;
+
+  useEffect(() => {
+    if (manualExpanded && !prevManualExpanded) {
+      requestAnimationFrame(() => {
+        const el = document.getElementById(groupNodes[0].id);
+        if (el) {
+          const navHeight = 56;
+          const top = el.getBoundingClientRect().top + window.scrollY - navHeight - 8;
+          window.scrollTo({ top, behavior: "smooth" });
+        }
+      });
+    }
+    setPrevManualExpanded(manualExpanded);
+  }, [manualExpanded, prevManualExpanded, groupNodes]);
 
   if (!expanded) {
     const firstYear = groupNodes[0].date.slice(0, 4);
@@ -77,9 +93,9 @@ export function DenseGroupBlock({
               {count} {isZh ? "个事件" : "events"}
             </span>
             {highCount > 0 && (
-              <span className="flex items-center gap-1 text-chrono-tiny text-chrono-high">
+              <span className="flex items-center gap-1 rounded-full bg-chrono-high/10 px-1.5 py-0.5 text-chrono-tiny text-chrono-high">
                 <span className="h-1.5 w-1.5 rounded-full bg-chrono-high" />
-                {highCount}
+                {highCount} {isZh ? "个重要" : "notable"}
               </span>
             )}
           </div>
@@ -97,7 +113,7 @@ export function DenseGroupBlock({
   }
 
   return (
-    <div>
+    <div className="relative">
       {groupNodes.map((node) => {
         const connInfo = connectionMap.get(node.id);
         const connCount = connInfo
@@ -125,17 +141,13 @@ export function DenseGroupBlock({
           </div>
         );
       })}
-      <div className="mb-6 flex items-start">
-        <div className="w-16 shrink-0" />
-        <div className="w-8 shrink-0" />
-        <div className="min-w-0 flex-1">
-          <button
-            onClick={() => setManualExpanded(false)}
-            className="px-4 text-chrono-tiny text-chrono-text-muted transition-colors hover:text-chrono-text-secondary"
-          >
-            ▴ {isZh ? "收起" : "Collapse"}
-          </button>
-        </div>
+      <div className="sticky bottom-4 z-10 flex justify-center">
+        <button
+          onClick={() => setManualExpanded(false)}
+          className="rounded-full border border-chrono-border bg-chrono-surface/95 px-4 py-1.5 text-chrono-tiny text-chrono-text-muted backdrop-blur-sm transition-colors hover:bg-chrono-surface-hover hover:text-chrono-text-secondary"
+        >
+          ▴ {isZh ? "收起" : "Collapse"}
+        </button>
       </div>
     </div>
   );

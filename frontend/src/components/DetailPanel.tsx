@@ -28,6 +28,17 @@ const LABELS: Record<string, Record<string, string>> = {
   sources: { zh: "来源", en: "Sources" },
   connections: { zh: "因果关联", en: "Connections" },
   key_stats: { zh: "关键数据", en: "Key Stats" },
+  description: { zh: "概述", en: "Overview" },
+  notable_quote: { zh: "引言", en: "Quote" },
+  // significance
+  revolutionary: { zh: "突破", en: "revolutionary" },
+  high: { zh: "重要", en: "high" },
+  medium: { zh: "一般", en: "medium" },
+  // connection types
+  caused: { zh: "直接导致", en: "caused" },
+  enabled: { zh: "促成", en: "enabled" },
+  inspired: { zh: "启发", en: "inspired" },
+  responded_to: { zh: "回应", en: "responded to" },
 };
 
 function label(key: string, language: string): string {
@@ -110,34 +121,31 @@ export function DetailPanel({
         }`}
       >
         {/* Header */}
-        <div className="shrink-0 flex items-center justify-between border-b border-chrono-border bg-chrono-bg/90 px-6 py-4">
-          <div className="flex items-center gap-3">
-            <span className="text-chrono-caption text-chrono-text-muted">
-              {displayNode.date}
-            </span>
-            <span
-              className={`rounded-full px-2 py-0.5 text-chrono-tiny font-medium ${
-                sig === "revolutionary"
-                  ? "bg-chrono-revolutionary/15 text-chrono-revolutionary"
-                  : sig === "high"
-                    ? "bg-chrono-high/15 text-chrono-high"
-                    : "bg-chrono-medium/15 text-chrono-text-muted"
-              }`}
-            >
-              {sig}
-            </span>
-            {details?.location && (
-              <span className="text-chrono-tiny text-chrono-text-muted">
-                {details.location}
+        <div className="shrink-0 border-b border-chrono-border bg-chrono-bg/90 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-chrono-caption text-chrono-text-muted">
+                {displayNode.date}
               </span>
-            )}
+              <span
+                className={`rounded-full px-2 py-0.5 text-chrono-tiny font-medium ${
+                  sig === "revolutionary"
+                    ? "bg-chrono-revolutionary/15 text-chrono-revolutionary"
+                    : sig === "high"
+                      ? "bg-chrono-high/15 text-chrono-high"
+                      : "bg-chrono-medium/15 text-chrono-text-muted"
+                }`}
+              >
+                {label(sig, language)}
+              </span>
+            </div>
+            <button
+              onClick={startClose}
+              className="shrink-0 ml-2 flex h-7 w-7 items-center justify-center rounded-md text-chrono-text-muted transition-colors hover:bg-chrono-surface hover:text-chrono-text"
+            >
+              &times;
+            </button>
           </div>
-          <button
-            onClick={startClose}
-            className="flex h-7 w-7 items-center justify-center rounded-md text-chrono-text-muted transition-colors hover:bg-chrono-surface hover:text-chrono-text"
-          >
-            &times;
-          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto">
@@ -156,6 +164,11 @@ export function DetailPanel({
             {displayNode.subtitle && (
               <p className="mt-1 text-chrono-caption text-chrono-text-secondary">
                 {displayNode.subtitle}
+              </p>
+            )}
+            {details?.location && (
+              <p className="mt-1 text-chrono-tiny text-chrono-text-muted">
+                {isZh ? "地点：" : "Location: "}{details.location}
               </p>
             )}
             {details?.tags && details.tags.length > 0 && (
@@ -177,17 +190,21 @@ export function DetailPanel({
             const cleanQuote =
               details?.notable_quote?.replace(/^["'\\]+$/, "").trim() || "";
             return cleanQuote ? (
-              <blockquote className="border-l-2 border-chrono-accent/50 pl-4 py-2">
-                <p className="text-chrono-body italic text-chrono-text-secondary">
-                  {cleanQuote}
-                </p>
-              </blockquote>
+              <DetailSection title={label("notable_quote", language)}>
+                <blockquote className="border-l-2 border-chrono-accent/50 pl-4 py-2">
+                  <p className="text-chrono-body italic text-chrono-text-secondary">
+                    {cleanQuote}
+                  </p>
+                </blockquote>
+              </DetailSection>
             ) : null;
           })()}
 
-          <p className="text-chrono-body leading-relaxed text-chrono-text-secondary">
-            {displayNode.description}
-          </p>
+          <DetailSection title={label("description", language)}>
+            <p className="text-chrono-body leading-relaxed text-chrono-text-secondary">
+              {displayNode.description}
+            </p>
+          </DetailSection>
 
           {details ? (
             <>
@@ -234,16 +251,24 @@ export function DetailPanel({
 
               {details.key_people.length > 0 && (
                 <DetailSection title={label("key_people", language)}>
-                  <div className="flex flex-wrap gap-2">
-                    {details.key_people.map((p, i) => (
-                      <span
-                        key={i}
-                        className="rounded-full border border-chrono-border px-2.5 py-0.5 text-chrono-caption text-chrono-text-secondary"
-                      >
-                        {p}
-                      </span>
-                    ))}
-                  </div>
+                  <ul className="space-y-2">
+                    {details.key_people.map((p, i) => {
+                      const sep = p.match(/^(.+?)\s*[——\-–—:：]\s*(.+)$/);
+                      return (
+                        <li key={i} className="flex items-baseline gap-2">
+                          <span className="shrink-0 mt-1.5 h-1.5 w-1.5 rounded-full bg-chrono-text-muted/50" />
+                          {sep ? (
+                            <span className="text-chrono-caption text-chrono-text-secondary">
+                              <span className="font-medium text-chrono-text">{sep[1]}</span>
+                              <span className="text-chrono-text-muted"> — {sep[2]}</span>
+                            </span>
+                          ) : (
+                            <span className="text-chrono-caption text-chrono-text-secondary">{p}</span>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </DetailSection>
               )}
 
@@ -280,7 +305,7 @@ export function DetailPanel({
                               <span
                                 className={`shrink-0 rounded-full px-1.5 py-0.5 text-chrono-tiny ${connectionTypeColor(conn.type)}`}
                               >
-                                {conn.type.replace("_", " ")}
+                                {label(conn.type, language)}
                               </span>
                             </button>
                           ))}
@@ -311,7 +336,7 @@ export function DetailPanel({
                               <span
                                 className={`shrink-0 rounded-full px-1.5 py-0.5 text-chrono-tiny ${connectionTypeColor(conn.type)}`}
                               >
-                                {conn.type.replace("_", " ")}
+                                {label(conn.type, language)}
                               </span>
                             </button>
                           ))}
@@ -335,6 +360,15 @@ export function DetailPanel({
                             rel="noopener noreferrer"
                             className="flex items-center gap-2 rounded-md px-2 py-1 text-chrono-tiny transition-colors hover:bg-chrono-surface-hover group/source"
                           >
+                            {domain && (
+                              <img
+                                src={`https://www.google.com/s2/favicons?domain=${domain}&sz=32`}
+                                alt=""
+                                width={14}
+                                height={14}
+                                className="shrink-0 rounded-sm"
+                              />
+                            )}
                             <span className="min-w-0 flex-1 truncate text-chrono-text-muted group-hover/source:text-chrono-text-secondary">
                               {domain && (
                                 <span className="text-chrono-text-secondary">{domain.split("/")[0]}</span>
@@ -344,7 +378,7 @@ export function DetailPanel({
                               )}
                               {!display.includes("›") && !domain && display}
                             </span>
-                            <ExternalLink size={12} className="shrink-0 text-chrono-text-muted/40 group-hover/source:text-chrono-text-muted" />
+                            <ExternalLink size={12} className="shrink-0 text-chrono-text-muted group-hover/source:text-chrono-text-secondary" />
                           </a>
                         </li>
                       );

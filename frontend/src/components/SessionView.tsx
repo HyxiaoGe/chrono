@@ -165,7 +165,7 @@ export function SessionView({ sessionId }: Props) {
   }
 
   const handleNavigateToNode = useCallback((targetId: string) => {
-    setSelectedNodeId(null);
+    setSelectedNodeId(targetId);
     requestAnimationFrame(() => {
       document
         .getElementById(targetId)
@@ -370,22 +370,24 @@ export function SessionView({ sessionId }: Props) {
             connectionMap={connectionMap}
             phaseGroups={phaseGroups}
           />
-          {nodes.length >= 15 && (
-            <MiniMap
-              nodes={nodes}
-              activeNodeId={activeNodeId}
-              onNavigateToNode={handleNavigateToNode}
-            />
-          )}
-          <DetailPanel
-            node={selectedNode}
-            language={language}
-            connectionMap={connectionMap}
-            onClose={() => setSelectedNodeId(null)}
-            onNavigateToNode={handleNavigateToNode}
-          />
         </div>
       )}
+
+      {phase === "research" && nodes.length >= 15 && (
+        <MiniMap
+          nodes={nodes}
+          activeNodeId={activeNodeId}
+          onNavigateToNode={handleNavigateToNode}
+        />
+      )}
+
+      <DetailPanel
+        node={selectedNode}
+        language={language}
+        connectionMap={connectionMap}
+        onClose={() => setSelectedNodeId(null)}
+        onNavigateToNode={handleNavigateToNode}
+      />
     </AppShell>
   );
 }

@@ -70,14 +70,14 @@ export function TimelineNodeCard({
     connectionCount > 0 ? (
       <span className="inline-flex items-center gap-1 text-chrono-tiny text-chrono-text-muted/60">
         <span className="text-chrono-accent/50">◈</span>
-        {connectionCount}
+        {connectionCount} {isZh ? "关联" : connectionCount > 1 ? "connections" : "connection"}
       </span>
     ) : null;
 
   if (sig === "revolutionary") {
     return (
       <div
-        className={`group animate-fade-in cursor-pointer rounded-xl border-l-4 border-chrono-revolutionary bg-chrono-surface-hover p-6 shadow-md shadow-chrono-revolutionary/10 transition-all ${selectedClass} ${highlightClass} ${dimClass}`}
+        className={`group animate-fade-in cursor-pointer rounded-xl border border-chrono-revolutionary/60 bg-chrono-surface-hover p-6 shadow-md shadow-chrono-revolutionary/10 transition-all ${selectedClass} ${highlightClass} ${dimClass}`}
         onClick={() => onSelect(node.id)}
       >
         <h3 className="text-chrono-subtitle font-semibold text-chrono-revolutionary">
@@ -145,7 +145,7 @@ function SkeletonCard({ node, sig }: { node: TimelineNode; sig: string }) {
   const isRev = sig === "revolutionary";
   if (isRev) {
     return (
-      <div className="rounded-xl border-l-4 border-chrono-revolutionary bg-chrono-surface-hover p-6">
+      <div className="rounded-xl border border-chrono-revolutionary/60 bg-chrono-surface-hover p-6">
         <div className="font-semibold text-chrono-text">{node.title}</div>
         <div className="mt-3 space-y-2">
           <div className="shimmer h-3 w-full rounded" />

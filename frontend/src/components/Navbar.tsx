@@ -95,11 +95,9 @@ export function Navbar({
 
       {/* Right */}
       <div className="ml-auto flex items-center gap-3">
-        {mode === "session" && (activePhase || activeYear) && (
+        {mode === "session" && activePhase && (
           <div className="hidden sm:flex items-center gap-2 text-chrono-tiny text-chrono-text-muted">
-            {activePhase && <span>{activePhase}</span>}
-            {activePhase && activeYear && <span className="text-chrono-border">{"\u00b7"}</span>}
-            {activeYear && <span>{activeYear}</span>}
+            <span>{activePhase}</span>
           </div>
         )}
 
