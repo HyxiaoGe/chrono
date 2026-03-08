@@ -105,7 +105,7 @@ export function DetailPanel({
       />
 
       <div
-        className={`relative w-full max-w-[420px] overflow-y-auto border-l border-chrono-border bg-chrono-bg/95 backdrop-blur-md ${
+        className={`relative h-full w-full max-w-[420px] overflow-y-auto border-l border-chrono-border bg-chrono-bg/95 backdrop-blur-md ${
           closing ? "animate-slide-out-right" : "animate-slide-in-right"
         }`}
       >
