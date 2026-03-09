@@ -76,6 +76,9 @@ def _friendly_model_name(model_string: str) -> str:
     # General: "claude-sonnet-4-5" → "Claude Sonnet 4.5"
     # "gemini-3-flash-preview" → "Gemini 3 Flash"
     name = model_string.replace("-preview", "").replace("-", " ").title()
+    # Fix common abbreviations that .title() lowercases
+    for abbr in ("Gpt", "Ai", "Llm"):
+        name = name.replace(abbr, abbr.upper())
     return name
 
 _PROGRESS_MESSAGES: dict[str, dict[str, str]] = {
@@ -155,6 +158,10 @@ _proposal_agent = Agent(
 - priority 5 = 核心主线（必须做），priority 1 = 补充线索（可跳过）
 - 总节点数 = 各维度 estimated_nodes 之和，应与复杂度等级匹配
 - 维度数量：light 1-2 条，medium 2-3 条，deep 3-5 条，epic 4-6 条
+- **近期变革敏感度**：规划维度时必须考虑该领域近 3 年内是否有重大范式变革\
+（如 AI 转型、新能源转型、监管重构等）。如果有，必须给予独立的调研维度，\
+不能仅作为其他维度的子话题。对于企业/产品类 topic，"最新战略方向"应优先\
+成为独立维度。如果用户 prompt 中提供了近期动态参考信息，务必据此调整维度规划。
 
 ## 分阶段调研（research_phases）
 
@@ -552,13 +559,44 @@ class Orchestrator:
 
     async def create_proposal(self, request: ResearchRequest) -> ResearchProposal:
         language = _normalize_language(request.language)
-        if language:
-            prompt = (
-                f"请评估以下调研主题并生成调研提案：{request.topic}\n\n"
-                f'要求：所有文本字段使用 {language} 输出。设置 language 字段为 "{language}"。'
+
+        # Search augmentation: fetch recent developments for better dimension planning
+        current_year = date.today().year
+        is_zh = language.startswith("zh") if language else not request.topic.isascii()
+        if is_zh:
+            query = (
+                f"{request.topic} 最新动态 重大变革"
+                f" {current_year - 1} {current_year}"
             )
         else:
-            prompt = f"请评估以下调研主题并生成调研提案：{request.topic}"
+            query = (
+                f"{request.topic} latest developments"
+                f" major changes {current_year - 1} {current_year}"
+            )
+        try:
+            context, _ = await self.tavily.search_and_format(
+                query, max_results=5
+            )
+        except Exception:
+            logger.warning(
+                "Proposal search augmentation failed, proceeding without context"
+            )
+            context = ""
+
+        # Build prompt
+        prompt = f"请评估以下调研主题并生成调研提案：{request.topic}"
+        if context:
+            if is_zh:
+                label = "以下是该主题的近期动态（供维度规划参考）"
+            else:
+                label = "Recent developments for reference"
+            prompt += f"\n\n{label}：\n{context}"
+        if language:
+            prompt += (
+                f"\n\n要求：所有文本字段使用 {language} 输出。"
+                f'设置 language 字段为 "{language}"。'
+            )
+
         result = await _proposal_agent.run(prompt)
         proposal = result.output
         if language:
