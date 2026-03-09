@@ -301,7 +301,7 @@ function ResearchProgress({
     : `${seconds}s`;
 
   return (
-    <div className="mb-6 rounded-lg border border-chrono-border bg-chrono-surface/50 px-5 py-3" data-export-hide>
+    <div className="mb-6 rounded-lg border border-chrono-border bg-chrono-surface px-5 py-3 backdrop-blur-md" data-export-hide>
       {/* Phase steps */}
       <div className="flex items-center gap-1">
         {PHASES.map((p, i) => {
@@ -418,6 +418,15 @@ export function Timeline({
   const connections = synthesisData?.connections;
   const dateCorrections = synthesisData?.date_corrections;
 
+  const completionTimeStr = useMemo(() => {
+    if (!completeData) return "";
+    const totalSec = Math.floor((Date.now() - researchStartTime) / 1000);
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return m > 0 ? `${m}:${String(s).padStart(2, "0")}` : `${s}s`;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [completeData]);
+
   const connectedNodeIds = useMemo(() => {
     if (!selectedNodeId) return null;
     const info = connectionMap.get(selectedNodeId);
@@ -431,16 +440,18 @@ export function Timeline({
 
   return (
     <div id="chrono-timeline" className="mx-auto max-w-3xl px-4 py-8">
-      {/* Research progress */}
+      {/* Research progress — sticky */}
       {!completeData && researchPhase && (
-        <ResearchProgress
-          phase={researchPhase}
-          model={researchModel}
-          startTime={researchStartTime}
-          nodes={nodes}
-          progressMessage={progressMessage}
-          isZh={isZh}
-        />
+        <div className="sticky top-14 z-20">
+          <ResearchProgress
+            phase={researchPhase}
+            model={researchModel}
+            startTime={researchStartTime}
+            nodes={nodes}
+            progressMessage={progressMessage}
+            isZh={isZh}
+          />
+        </div>
       )}
 
       {/* Complete status */}
@@ -448,8 +459,8 @@ export function Timeline({
         <div className="mb-8 flex items-center justify-center gap-3 text-chrono-caption text-chrono-text-muted">
           <span>
             {isZh
-              ? `调研完成 · ${completeData.total_nodes} 个节点 · ${completeData.detail_completed} 个已补充详情`
-              : `Research complete · ${completeData.total_nodes} nodes · ${completeData.detail_completed} enriched`}
+              ? `调研完成 · ${completeData.total_nodes} 个节点 · ${completeData.detail_completed} 个已补充详情 · 耗时 ${completionTimeStr}`
+              : `Research complete · ${completeData.total_nodes} nodes · ${completeData.detail_completed} enriched · ${completionTimeStr}`}
           </span>
           <ExportDropdown
             proposal={proposal}

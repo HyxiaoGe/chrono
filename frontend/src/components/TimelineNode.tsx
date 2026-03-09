@@ -156,12 +156,27 @@ function ActiveIndicator({
       ? (isZh ? "分析中..." : "analyzing...")
       : (isZh ? "生成中..." : "generating...");
   return (
-    <div className="mt-3 flex items-center gap-2">
-      <span className="relative flex h-2 w-2">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-chrono-accent/60" />
-        <span className="relative inline-flex h-2 w-2 rounded-full bg-chrono-accent" />
+    <div className="mt-3 flex items-center gap-3">
+      {/* Radiating pulse dot */}
+      <span className="relative flex h-3 w-3 items-center justify-center">
+        <span
+          className="absolute h-3 w-3 rounded-full bg-chrono-accent/30"
+          style={{ animation: "ripple 1.5s ease-out infinite" }}
+        />
+        <span
+          className="absolute h-3 w-3 rounded-full bg-chrono-accent/20"
+          style={{ animation: "ripple 1.5s ease-out 0.5s infinite" }}
+        />
+        <span
+          className="absolute h-3 w-3 rounded-full bg-chrono-accent/10"
+          style={{ animation: "ripple 1.5s ease-out 1s infinite" }}
+        />
+        <span
+          className="relative h-2 w-2 rounded-full bg-chrono-accent"
+          style={{ animation: "glow-pulse 2s ease-in-out infinite" }}
+        />
       </span>
-      <span className="text-chrono-tiny font-medium text-chrono-accent/80">
+      <span className="text-chrono-tiny font-medium text-chrono-accent">
         {progress.model}
       </span>
       <span className="text-chrono-tiny text-chrono-text-muted">
@@ -184,12 +199,15 @@ function SkeletonCard({
 }) {
   const isActive = !!progress;
   const activeClass = isActive
-    ? "border-chrono-accent/40 shadow-sm shadow-chrono-accent/10"
+    ? "border-chrono-accent/40"
     : "";
+  const activeStyle = isActive
+    ? { animation: "glow-pulse 2s ease-in-out infinite" }
+    : undefined;
 
   if (sig === "revolutionary") {
     return (
-      <div className={`rounded-xl border bg-chrono-surface-hover p-6 transition-all duration-300 ${isActive ? activeClass : "border-chrono-revolutionary/30"}`}>
+      <div className={`rounded-xl border bg-chrono-surface-hover p-6 transition-all duration-300 ${isActive ? activeClass : "border-chrono-revolutionary/30"}`} style={activeStyle}>
         <div className={`text-chrono-subtitle font-semibold ${isActive ? "text-chrono-revolutionary/60" : "text-chrono-text/40"}`}>
           {node.title}
         </div>
@@ -207,7 +225,7 @@ function SkeletonCard({
 
   if (sig === "high") {
     return (
-      <div className={`rounded-xl border bg-chrono-surface/50 p-5 transition-all duration-300 ${isActive ? activeClass : "border-chrono-border/40"}`}>
+      <div className={`rounded-xl border bg-chrono-surface/50 p-5 transition-all duration-300 ${isActive ? activeClass : "border-chrono-border/40"}`} style={activeStyle}>
         <div className={`font-semibold ${isActive ? "text-chrono-text" : "text-chrono-text/40"}`}>
           {node.title}
         </div>
@@ -225,7 +243,7 @@ function SkeletonCard({
 
   // medium
   return (
-    <div className={`rounded-lg px-4 py-2 transition-all duration-300 ${isActive ? "border border-chrono-accent/30 shadow-sm shadow-chrono-accent/5" : ""}`}>
+    <div className={`rounded-lg px-4 py-2 transition-all duration-300 ${isActive ? "border border-chrono-accent/30" : ""}`} style={activeStyle}>
       <div className={`font-medium ${isActive ? "text-chrono-text-secondary" : "text-chrono-text-muted/40"}`}>
         {node.title}
       </div>
