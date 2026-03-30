@@ -17,5 +17,11 @@ jobs:
           cd ~/project/chrono
           git stash --include-untracked
           git pull
-          docker compose up -d --build
+          if git diff HEAD~1 --name-only | grep -qE 'pyproject\.toml|uv\.lock|package\.json|pnpm-lock|Dockerfile|docker-compose'; then
+            docker compose up -d --build
+          else
+            docker compose restart backend
+            docker compose up -d --build frontend
+          fi
           docker image prune -f
+          docker builder prune --filter "until=72h" -f
