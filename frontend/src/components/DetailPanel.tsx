@@ -153,16 +153,16 @@ export function DetailPanel({
           {/* Title + subtitle + tags */}
           <div>
             <h2
-              className={`text-chrono-title font-semibold ${
+              className={`font-bold leading-tight ${
                 sig === "revolutionary"
-                  ? "text-chrono-revolutionary"
-                  : "text-chrono-text"
+                  ? "text-2xl text-chrono-revolutionary"
+                  : "text-chrono-title text-chrono-text"
               }`}
             >
               {displayNode.title}
             </h2>
             {displayNode.subtitle && (
-              <p className="mt-1 text-chrono-caption text-chrono-text-secondary">
+              <p className="mt-1.5 text-chrono-caption italic text-chrono-text-secondary">
                 {displayNode.subtitle}
               </p>
             )}
@@ -190,13 +190,14 @@ export function DetailPanel({
             const cleanQuote =
               details?.notable_quote?.replace(/^["'\\]+$/, "").trim() || "";
             return cleanQuote ? (
-              <DetailSection title={label("notable_quote", language)}>
-                <blockquote className="border-l-2 border-chrono-accent/50 pl-4 py-2">
-                  <p className="text-chrono-body italic text-chrono-text-secondary">
-                    {cleanQuote}
-                  </p>
-                </blockquote>
-              </DetailSection>
+              <div className="relative pl-5 py-1">
+                <span className="absolute left-0 top-0 text-3xl leading-none text-chrono-accent/40 font-serif select-none" aria-hidden>
+                  &ldquo;
+                </span>
+                <p className="text-base italic leading-relaxed text-chrono-text-secondary">
+                  {cleanQuote}
+                </p>
+              </div>
             ) : null;
           })()}
 
@@ -251,24 +252,34 @@ export function DetailPanel({
 
               {details.key_people.length > 0 && (
                 <DetailSection title={label("key_people", language)}>
-                  <ul className="space-y-2">
+                  <div className="flex flex-wrap gap-2">
                     {details.key_people.map((p, i) => {
                       const sep = p.match(/^(.+?)\s*[——\-–—:：]\s*(.+)$/);
+                      const name = sep ? sep[1].trim() : p;
+                      const role = sep ? sep[2].trim() : "";
+                      const initial = name.charAt(0).toUpperCase();
                       return (
-                        <li key={i} className="flex items-baseline gap-2">
-                          <span className="shrink-0 mt-1.5 h-1.5 w-1.5 rounded-full bg-chrono-text-muted/50" />
-                          {sep ? (
-                            <span className="text-chrono-caption text-chrono-text-secondary">
-                              <span className="font-medium text-chrono-text">{sep[1]}</span>
-                              <span className="text-chrono-text-muted"> — {sep[2]}</span>
-                            </span>
-                          ) : (
-                            <span className="text-chrono-caption text-chrono-text-secondary">{p}</span>
-                          )}
-                        </li>
+                        <div
+                          key={i}
+                          className="flex items-center gap-2 rounded-lg border border-chrono-border/30 bg-chrono-surface/50 px-2.5 py-2"
+                        >
+                          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-chrono-accent/15 text-[10px] font-bold text-chrono-accent">
+                            {initial}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-chrono-tiny font-semibold text-chrono-text leading-tight">
+                              {name}
+                            </div>
+                            {role && (
+                              <div className="text-chrono-tiny text-chrono-text-muted leading-tight">
+                                {role}
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       );
                     })}
-                  </ul>
+                  </div>
                 </DetailSection>
               )}
 
@@ -410,7 +421,7 @@ function DetailSection({
 }) {
   return (
     <div>
-      <h4 className="mb-2 text-chrono-tiny font-medium uppercase tracking-wider text-chrono-text-muted">
+      <h4 className="mb-2 text-chrono-tiny font-medium text-chrono-text-muted/70">
         {title}
       </h4>
       {children}
