@@ -18,13 +18,20 @@ class SessionStatus(StrEnum):
 
 
 class ResearchSession:
-    def __init__(self, session_id: str, proposal: ResearchProposal) -> None:
+    def __init__(
+        self,
+        session_id: str,
+        proposal: ResearchProposal,
+        *,
+        status: SessionStatus = SessionStatus.PROPOSAL_READY,
+        cached_research_id: uuid.UUID | None = None,
+    ) -> None:
         self.session_id = session_id
         self.proposal = proposal
-        self.status = SessionStatus.PROPOSAL_READY
+        self.status = status
         self.queue: asyncio.Queue[tuple[SSEEventType, dict[str, Any]] | None] = asyncio.Queue()
         self.task: asyncio.Task[None] | None = None
-        self.cached_research_id: uuid.UUID | None = None
+        self.cached_research_id = cached_research_id
         self._event_history: list[tuple[SSEEventType, dict[str, Any]]] = []
 
     async def push(self, event_type: SSEEventType, data: dict[str, Any]) -> None:
@@ -84,8 +91,20 @@ class SessionManager:
     def __init__(self) -> None:
         self._sessions: dict[str, ResearchSession] = {}
 
-    def create(self, session_id: str, proposal: ResearchProposal) -> ResearchSession:
-        session = ResearchSession(session_id, proposal)
+    def create(
+        self,
+        session_id: str,
+        proposal: ResearchProposal,
+        *,
+        status: SessionStatus = SessionStatus.PROPOSAL_READY,
+        cached_research_id: uuid.UUID | None = None,
+    ) -> ResearchSession:
+        session = ResearchSession(
+            session_id,
+            proposal,
+            status=status,
+            cached_research_id=cached_research_id,
+        )
         self._sessions[session_id] = session
         return session
 
