@@ -79,14 +79,21 @@ export function TimelineNodeCard({
   if (sig === "revolutionary") {
     return (
       <div
-        className={`group animate-fade-in cursor-pointer rounded-xl border border-chrono-revolutionary/60 bg-chrono-surface-hover p-6 shadow-md shadow-chrono-revolutionary/10 transition-all ${selectedClass} ${highlightClass} ${dimClass}`}
+        className={`group animate-fade-in cursor-pointer rounded-xl border border-chrono-revolutionary/50 bg-chrono-surface-hover p-6 transition-all hover:border-chrono-revolutionary/80 hover:shadow-lg hover:shadow-chrono-revolutionary/10 ${selectedClass} ${highlightClass} ${dimClass}`}
+        style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--color-chrono-revolutionary) 6%, var(--color-chrono-surface-hover)) 0%, var(--color-chrono-surface-hover) 60%)" }}
         onClick={() => onSelect(node.id)}
       >
-        <h3 className="text-chrono-subtitle font-semibold text-chrono-revolutionary">
+        <div className="mb-2 flex items-center gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-chrono-revolutionary/60">
+            {isZh ? "重大事件" : "Landmark"}
+          </span>
+          <div className="h-px flex-1 bg-chrono-revolutionary/15" />
+        </div>
+        <h3 className="text-xl font-bold leading-tight text-chrono-revolutionary">
           {node.title}
         </h3>
         {node.subtitle && (
-          <p className="mt-0.5 text-chrono-caption text-chrono-text-secondary">
+          <p className="mt-1 text-chrono-caption italic text-chrono-text-secondary">
             {node.subtitle}
           </p>
         )}
@@ -94,7 +101,7 @@ export function TimelineNodeCard({
           {node.description}
         </p>
         {(meta || badge) && (
-          <div className="mt-2 flex items-center gap-3">
+          <div className="mt-3 flex items-center gap-3">
             {meta}
             {badge && <span className="ml-auto">{badge}</span>}
           </div>
@@ -207,8 +214,17 @@ function SkeletonCard({
 
   if (sig === "revolutionary") {
     return (
-      <div className={`rounded-xl border bg-chrono-surface-hover p-6 transition-all duration-300 ${isActive ? activeClass : "border-chrono-revolutionary/30"}`} style={activeStyle}>
-        <div className={`text-chrono-subtitle font-semibold ${isActive ? "text-chrono-revolutionary/60" : "text-chrono-text/40"}`}>
+      <div
+        className={`rounded-xl border bg-chrono-surface-hover p-6 transition-all duration-300 ${isActive ? activeClass : "border-chrono-revolutionary/25"}`}
+        style={activeStyle}
+      >
+        <div className="mb-2 flex items-center gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-chrono-revolutionary/40">
+            {isZh ? "重大事件" : "Landmark"}
+          </span>
+          <div className="h-px flex-1 bg-chrono-revolutionary/10" />
+        </div>
+        <div className={`text-xl font-bold leading-tight ${isActive ? "text-chrono-revolutionary/70" : "text-chrono-revolutionary/30"}`}>
           {node.title}
         </div>
         {isActive ? (
