@@ -10,6 +10,7 @@ services:
     volumes:
       - ./backend:/app
     restart: unless-stopped
+    mem_limit: 256m
 
   frontend:
     build:
@@ -21,3 +22,4 @@ services:
     ports:
       - "3003:3000"
     restart: unless-stopped
+    mem_limit: 128m
