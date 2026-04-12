@@ -28,6 +28,7 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501", "B008"]  # 行长交给 formatter；B008 是 FastAPI Depends 的正常用法
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
