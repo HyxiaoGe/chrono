@@ -34,11 +34,33 @@ jobs:
           cd ~/project/chrono
           git stash --include-untracked
           git pull
-          if git diff HEAD~1 --name-only | grep -qE 'pyproject\.toml|uv\.lock|package\.json|pnpm-lock|Dockerfile|docker-compose'; then
+
+          CHANGED=$(git diff HEAD~1 --name-only)
+          INFRA=$(echo "$CHANGED" | grep -cE 'docker-compose|\.env' || true)
+          BE_DEPS=$(echo "$CHANGED" | grep -cE 'pyproject\.toml|uv\.lock|backend/Dockerfile' || true)
+          FE_CHANGED=$(echo "$CHANGED" | grep -cE '^frontend/' || true)
+          BE_CHANGED=$(echo "$CHANGED" | grep -cE '^backend/' || true)
+
+          if [ "$INFRA" -gt 0 ] || ([ "$BE_DEPS" -gt 0 ] && [ "$FE_CHANGED" -gt 0 ]); then
+            echo "▶ Full rebuild"
             docker compose up -d --build
-          else
-            docker compose restart backend
+          elif [ "$BE_DEPS" -gt 0 ]; then
+            echo "▶ Backend rebuild (deps changed) + frontend restart"
+            docker compose up -d --build backend
+            docker compose restart frontend
+          elif [ "$FE_CHANGED" -gt 0 ] && [ "$BE_CHANGED" -gt 0 ]; then
+            echo "▶ Frontend rebuild + backend restart"
             docker compose up -d --build frontend
+            docker compose restart backend
+          elif [ "$FE_CHANGED" -gt 0 ]; then
+            echo "▶ Frontend rebuild only"
+            docker compose up -d --build frontend
+          elif [ "$BE_CHANGED" -gt 0 ]; then
+            echo "▶ Backend restart only"
+            docker compose restart backend
+          else
+            echo "▶ Config/docs only, restart all"
+            docker compose restart
           fi
+
           docker image prune -f
-          docker builder prune --filter "until=72h" -f

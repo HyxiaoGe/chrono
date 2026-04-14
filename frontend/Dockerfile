@@ -14,7 +14,8 @@ ENV API_BASE_URL=$API_BASE_URL
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN corepack enable && pnpm build
+RUN --mount=type=cache,target=/app/.next/cache \
+    corepack enable && pnpm build
 
 FROM node:20-alpine AS runner
 WORKDIR /app
