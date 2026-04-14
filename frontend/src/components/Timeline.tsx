@@ -111,6 +111,28 @@ function computeSeparators(nodes: TimelineNode[]): Separator[] {
   return separators;
 }
 
+// --- Year separator ---
+
+function YearSeparator({ label }: { label: string }) {
+  return (
+    <div className="relative mb-4 mt-6">
+      {/* Ghost large year behind */}
+      <span className="pointer-events-none absolute -left-2 -top-5 select-none text-[4.5rem] font-black leading-none tracking-tighter text-chrono-text/[0.04]">
+        {label}
+      </span>
+      <div className="flex items-center">
+        <div className="w-16 shrink-0" />
+        <div className="flex w-8 shrink-0 justify-center">
+          <div className="h-px w-5 bg-chrono-border/60" />
+        </div>
+        <span className="text-[11px] font-semibold tracking-[0.18em] text-chrono-text-muted/70 uppercase">
+          {label}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // --- Dot class ---
 
 function dotClass(sig: string): string {
@@ -521,17 +543,7 @@ export function Timeline({
                   </div>
                 )}
                 {/* Year separator before group */}
-                {sepLabel && (
-                  <div className="mb-4 flex items-center">
-                    <div className="w-16 shrink-0" />
-                    <div className="flex w-8 shrink-0 justify-center">
-                      <div className="h-px w-6 bg-chrono-border" />
-                    </div>
-                    <span className="pl-1 text-chrono-body font-medium text-chrono-text-secondary">
-                      {sepLabel}
-                    </span>
-                  </div>
-                )}
+                {sepLabel && <YearSeparator label={sepLabel} />}
                 <DenseGroupBlock
                   group={denseGroup}
                   nodes={nodes}
@@ -578,17 +590,7 @@ export function Timeline({
               )}
 
               {/* Year separator */}
-              {sepLabel && (
-                <div className="mb-4 flex items-center">
-                  <div className="w-16 shrink-0" />
-                  <div className="flex w-8 shrink-0 justify-center">
-                    <div className="h-px w-6 bg-chrono-border" />
-                  </div>
-                  <span className="pl-1 text-chrono-body font-medium text-chrono-text-secondary">
-                    {sepLabel}
-                  </span>
-                </div>
-              )}
+              {sepLabel && <YearSeparator label={sepLabel} />}
 
               {/* Node entry */}
               <div className="mb-6 flex items-start">

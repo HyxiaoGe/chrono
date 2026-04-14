@@ -12,24 +12,40 @@ interface Props {
   locale: Locale;
 }
 
-const LEVEL_DOTS: Record<string, number> = {
+const LEVEL_FILL: Record<string, number> = {
   light: 1,
   medium: 2,
   deep: 3,
   epic: 4,
 };
 
-const LEVEL_DOT_COLOR: Record<string, string> = {
+const LEVEL_BAR_COLOR: Record<string, string> = {
   light: "bg-chrono-level-light",
   medium: "bg-chrono-level-medium",
   deep: "bg-chrono-level-deep",
   epic: "bg-chrono-level-epic",
 };
 
+const LEVEL_TEXT_COLOR: Record<string, string> = {
+  light: "text-chrono-level-light",
+  medium: "text-chrono-level-medium",
+  deep: "text-chrono-level-deep",
+  epic: "text-chrono-level-epic",
+};
+
+const LEVEL_LABEL: Record<string, Record<string, string>> = {
+  light:  { zh: "轻量", en: "Light" },
+  medium: { zh: "标准", en: "Standard" },
+  deep:   { zh: "深度", en: "Deep" },
+  epic:   { zh: "史诗", en: "Epic" },
+};
+
 export function ProposalCard({ proposal, onConfirm, onCancel, locale }: Props) {
   const { user_facing, complexity, research_threads } = proposal;
-  const activeDots = LEVEL_DOTS[complexity.level] ?? 1;
-  const dotColor = LEVEL_DOT_COLOR[complexity.level] ?? "bg-chrono-accent";
+  const activeFill = LEVEL_FILL[complexity.level] ?? 1;
+  const barColor = LEVEL_BAR_COLOR[complexity.level] ?? "bg-chrono-accent";
+  const textColor = LEVEL_TEXT_COLOR[complexity.level] ?? "text-chrono-accent";
+  const levelLabel = LEVEL_LABEL[complexity.level]?.[locale] ?? LEVEL_LABEL[complexity.level]?.en ?? "Deep";
   const t = messages[locale].app;
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -53,25 +69,50 @@ export function ProposalCard({ proposal, onConfirm, onCancel, locale }: Props) {
       onClick={handleBackdropClick}
     >
       <div ref={cardRef} className="animate-slide-up w-full max-w-xl rounded-2xl border border-chrono-border bg-chrono-surface/80 p-8 backdrop-blur-sm">
-        <div className="flex items-center gap-3">
-          <h2 className="text-chrono-title font-bold text-chrono-text">
-            {user_facing.title}
-          </h2>
-          <div className="flex gap-1">
-            {Array.from({ length: 4 }, (_, i) => (
-              <div
-                key={i}
-                className={`h-2 w-2 rounded-full ${
-                  i < activeDots ? dotColor : "bg-chrono-border"
-                }`}
-              />
-            ))}
+        <h2 className="text-chrono-title font-bold text-chrono-text">
+          {user_facing.title}
+        </h2>
+
+        {/* Complexity bar + time span */}
+        <div className="mt-3 space-y-2">
+          <div className="flex items-center gap-3">
+            <div className="flex flex-1 gap-1">
+              {Array.from({ length: 4 }, (_, i) => (
+                <div
+                  key={i}
+                  className={`h-1 flex-1 rounded-full transition-all ${
+                    i < activeFill ? barColor : "bg-chrono-border/40"
+                  }`}
+                />
+              ))}
+            </div>
+            <span className={`text-chrono-tiny font-semibold ${textColor}`}>
+              {levelLabel}
+            </span>
           </div>
-          <span className="text-chrono-caption text-chrono-text-muted">
-            {complexity.time_span}
-          </span>
+
+          {/* Mini timeline span */}
+          {(() => {
+            const spanParts = complexity.time_span.split(/\s+[-–—]\s+/);
+            return (
+              <div className="flex items-center gap-2">
+                <span className="text-chrono-tiny text-chrono-text-muted tabular-nums">
+                  {spanParts[0]?.trim() || complexity.time_span}
+                </span>
+                <div className="relative flex-1">
+                  <div className="h-px w-full bg-chrono-border/50" />
+                  <div className="absolute left-0 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-chrono-accent/50" />
+                  <div className="absolute right-0 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-chrono-accent/50" />
+                </div>
+                <span className="text-chrono-tiny text-chrono-text-muted tabular-nums">
+                  {spanParts[1]?.trim() || ""}
+                </span>
+              </div>
+            );
+          })()}
         </div>
-        <p className="mt-2 text-chrono-body text-chrono-text-secondary">
+
+        <p className="mt-3 text-chrono-body text-chrono-text-secondary">
           {user_facing.summary}
         </p>
 
@@ -83,17 +124,18 @@ export function ProposalCard({ proposal, onConfirm, onCancel, locale }: Props) {
             {research_threads.map((thread) => (
               <div
                 key={thread.name}
-                className="flex items-start gap-3 rounded-lg bg-chrono-bg/50 px-3 py-2"
+                className={`flex items-start gap-3 rounded-lg bg-chrono-bg/50 py-2.5 pl-3 pr-3 border-l-2 ${
+                  thread.priority >= 4 ? "border-chrono-accent" : "border-chrono-border/40"
+                }`}
               >
-                <div className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${
-                  thread.priority >= 4 ? "bg-chrono-accent" : "bg-chrono-text-muted/50"
-                }`} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-chrono-caption font-medium text-chrono-text-secondary">
+                    <span className={`text-chrono-caption font-medium ${
+                      thread.priority >= 4 ? "text-chrono-text" : "text-chrono-text-secondary"
+                    }`}>
                       {thread.name}
                     </span>
-                    <span className="shrink-0 text-chrono-tiny text-chrono-text-muted">
+                    <span className="shrink-0 rounded-full bg-chrono-border/30 px-2 py-0.5 text-chrono-tiny text-chrono-text-muted">
                       ~{thread.estimated_nodes} {locale === "zh" ? "节点" : "nodes"}
                     </span>
                   </div>
@@ -114,18 +156,17 @@ export function ProposalCard({ proposal, onConfirm, onCancel, locale }: Props) {
           <span>~{complexity.estimated_total_nodes} {locale === "zh" ? "个节点" : "nodes"}</span>
         </div>
 
-        <div className="mt-6 flex gap-3">
+        <div className="mt-6 flex items-center gap-4">
           <button
             onClick={onConfirm}
-            className="flex-1 rounded-lg bg-chrono-text py-3 font-medium text-chrono-bg
-                       hover:bg-chrono-text/90 transition-colors cursor-pointer"
+            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-chrono-accent py-3 font-semibold text-chrono-bg transition-colors hover:bg-chrono-accent/90 cursor-pointer"
           >
             {t.startResearch}
+            <span aria-hidden>→</span>
           </button>
           <button
             onClick={onCancel}
-            className="rounded-lg border border-chrono-border px-6 py-3 text-chrono-text-muted
-                       hover:border-chrono-border-active hover:text-chrono-text-secondary transition-colors cursor-pointer"
+            className="px-3 py-2 text-chrono-caption text-chrono-text-muted transition-colors hover:text-chrono-text-secondary cursor-pointer"
           >
             {t.cancel}
           </button>
