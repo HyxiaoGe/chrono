@@ -18,8 +18,7 @@ jobs:
         run: python3 scripts/check_architecture.py
 
       - name: Lint 检查
-        run: |
-          pipx run ruff check .
+        run: uv run ruff check .
 
   deploy:
     needs: check
