@@ -19,8 +19,7 @@ jobs:
 
       - name: Lint 检查
         run: |
-          pip install ruff -q
-          ruff check .
+          pipx run ruff check .
 
   deploy:
     needs: check
