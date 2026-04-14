@@ -79,8 +79,7 @@ export function TimelineNodeCard({
   if (sig === "revolutionary") {
     return (
       <div
-        className={`group animate-fade-in cursor-pointer rounded-xl border border-chrono-revolutionary/50 bg-chrono-surface-hover p-6 transition-all hover:border-chrono-revolutionary/80 hover:shadow-lg hover:shadow-chrono-revolutionary/10 ${selectedClass} ${highlightClass} ${dimClass}`}
-        style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--color-chrono-revolutionary) 6%, var(--color-chrono-surface-hover)) 0%, var(--color-chrono-surface-hover) 60%)" }}
+        className={`group animate-fade-in cursor-pointer rounded-xl border border-chrono-revolutionary/50 bg-gradient-to-br from-chrono-revolutionary/5 to-chrono-surface-hover p-6 transition-all hover:border-chrono-revolutionary/80 hover:shadow-lg hover:shadow-chrono-revolutionary/10 ${selectedClass} ${highlightClass} ${dimClass}`}
         onClick={() => onSelect(node.id)}
       >
         <div className="mb-2 flex items-center gap-2">

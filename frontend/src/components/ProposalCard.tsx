@@ -33,11 +33,11 @@ const LEVEL_TEXT_COLOR: Record<string, string> = {
   epic: "text-chrono-level-epic",
 };
 
-const LEVEL_LABEL: Record<string, [string, string]> = {
-  light:  ["轻量", "Light"],
-  medium: ["标准", "Standard"],
-  deep:   ["深度", "Deep"],
-  epic:   ["史诗", "Epic"],
+const LEVEL_LABEL: Record<string, Record<string, string>> = {
+  light:  { zh: "轻量", en: "Light" },
+  medium: { zh: "标准", en: "Standard" },
+  deep:   { zh: "深度", en: "Deep" },
+  epic:   { zh: "史诗", en: "Epic" },
 };
 
 export function ProposalCard({ proposal, onConfirm, onCancel, locale }: Props) {
@@ -45,7 +45,7 @@ export function ProposalCard({ proposal, onConfirm, onCancel, locale }: Props) {
   const activeFill = LEVEL_FILL[complexity.level] ?? 1;
   const barColor = LEVEL_BAR_COLOR[complexity.level] ?? "bg-chrono-accent";
   const textColor = LEVEL_TEXT_COLOR[complexity.level] ?? "text-chrono-accent";
-  const [labelZh, labelEn] = LEVEL_LABEL[complexity.level] ?? ["深度", "Deep"];
+  const levelLabel = LEVEL_LABEL[complexity.level]?.[locale] ?? LEVEL_LABEL[complexity.level]?.en ?? "Deep";
   const t = messages[locale].app;
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -87,24 +87,29 @@ export function ProposalCard({ proposal, onConfirm, onCancel, locale }: Props) {
               ))}
             </div>
             <span className={`text-chrono-tiny font-semibold ${textColor}`}>
-              {locale === "zh" ? labelZh : labelEn}
+              {levelLabel}
             </span>
           </div>
 
           {/* Mini timeline span */}
-          <div className="flex items-center gap-2">
-            <span className="text-chrono-tiny text-chrono-text-muted tabular-nums">
-              {complexity.time_span.split(/[–—-]/)[0]?.trim() || complexity.time_span}
-            </span>
-            <div className="relative flex-1">
-              <div className="h-px w-full bg-chrono-border/50" />
-              <div className="absolute left-0 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-chrono-accent/50" />
-              <div className="absolute right-0 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-chrono-accent/50" />
-            </div>
-            <span className="text-chrono-tiny text-chrono-text-muted tabular-nums">
-              {complexity.time_span.split(/[–—-]/)[1]?.trim() || ""}
-            </span>
-          </div>
+          {(() => {
+            const spanParts = complexity.time_span.split(/\s+[-–—]\s+/);
+            return (
+              <div className="flex items-center gap-2">
+                <span className="text-chrono-tiny text-chrono-text-muted tabular-nums">
+                  {spanParts[0]?.trim() || complexity.time_span}
+                </span>
+                <div className="relative flex-1">
+                  <div className="h-px w-full bg-chrono-border/50" />
+                  <div className="absolute left-0 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-chrono-accent/50" />
+                  <div className="absolute right-0 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-chrono-accent/50" />
+                </div>
+                <span className="text-chrono-tiny text-chrono-text-muted tabular-nums">
+                  {spanParts[1]?.trim() || ""}
+                </span>
+              </div>
+            );
+          })()}
         </div>
 
         <p className="mt-3 text-chrono-body text-chrono-text-secondary">
@@ -161,7 +166,7 @@ export function ProposalCard({ proposal, onConfirm, onCancel, locale }: Props) {
           </button>
           <button
             onClick={onCancel}
-            className="text-chrono-caption text-chrono-text-muted transition-colors hover:text-chrono-text-secondary cursor-pointer"
+            className="px-3 py-2 text-chrono-caption text-chrono-text-muted transition-colors hover:text-chrono-text-secondary cursor-pointer"
           >
             {t.cancel}
           </button>

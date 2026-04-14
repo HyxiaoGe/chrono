@@ -190,14 +190,16 @@ export function DetailPanel({
             const cleanQuote =
               details?.notable_quote?.replace(/^["'\\]+$/, "").trim() || "";
             return cleanQuote ? (
-              <div className="relative pl-5 py-1">
-                <span className="absolute left-0 top-0 text-3xl leading-none text-chrono-accent/40 font-serif select-none" aria-hidden>
-                  &ldquo;
-                </span>
-                <p className="text-base italic leading-relaxed text-chrono-text-secondary">
-                  {cleanQuote}
-                </p>
-              </div>
+              <DetailSection title={label("notable_quote", language)}>
+                <div className="relative pl-5 py-1">
+                  <span className="absolute left-0 top-0 text-3xl leading-none text-chrono-accent/40 font-serif select-none" aria-hidden>
+                    &ldquo;
+                  </span>
+                  <p className="text-base italic leading-relaxed text-chrono-text-secondary">
+                    {cleanQuote}
+                  </p>
+                </div>
+              </DetailSection>
             ) : null;
           })()}
 
