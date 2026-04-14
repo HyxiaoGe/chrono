@@ -83,10 +83,7 @@ class RuntimeTimelineNode(BaseModel):
         return payload
 
     def to_db_dict(self) -> dict[str, Any]:
-        payload = self.to_sse_dict()
-        if self.details is not None:
-            payload["details"] = self.details.model_dump()
-        return payload
+        return self.to_sse_dict()
 
     def with_details(self, details: NodeDetail) -> RuntimeTimelineNode:
         return self.model_copy(update={"details": details, "status": RuntimeNodeStatus.COMPLETE})

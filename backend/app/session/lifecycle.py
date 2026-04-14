@@ -83,7 +83,7 @@ class SessionLifecycleService:
         elif (
             session.task is None
             and session.cached_research_id is not None
-            and not session._event_history
+            and not session.has_events
         ):
             session.status = SessionStatus.EXECUTING
             session.task = asyncio.create_task(replay_research(session, session.cached_research_id))

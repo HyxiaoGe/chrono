@@ -9,18 +9,18 @@ from app.db.repository import save_research
 from app.models.research import ResearchProposal, ResearchRequest
 from app.models.runtime import RuntimeResearchState
 from app.models.session import ResearchSession, SessionStatus
-from app.orchestrator.event_publisher import (
-    push_complete,
-    push_research_error,
-    push_skeleton,
-    runtime_nodes_to_dicts,
-)
 from app.orchestrator.phases.analysis import run_analysis_phase
 from app.orchestrator.phases.detail import run_detail_phase
 from app.orchestrator.phases.skeleton import build_skeleton_phase
 from app.orchestrator.phases.synthesis import run_synthesis_phase
 from app.orchestrator.proposal import create_proposal as build_proposal
 from app.services.tavily import TavilyService
+from app.sse.event_publisher import (
+    push_complete,
+    push_research_error,
+    push_skeleton,
+    runtime_nodes_to_dicts,
+)
 
 logger = logging.getLogger(__name__)
 

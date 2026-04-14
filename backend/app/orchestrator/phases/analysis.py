@@ -5,11 +5,11 @@ import logging
 from app.agents.gap_analysis import run_gap_analysis_agent
 from app.models.runtime import RuntimeResearchState, RuntimeTimelineNode
 from app.models.session import ResearchSession
-from app.orchestrator.event_publisher import friendly_model_name, push_progress, push_skeleton
 from app.orchestrator.messages import get_progress_message
 from app.orchestrator.phases.detail import enrich_nodes
 from app.orchestrator.verification import filter_hallucinations
 from app.services.tavily import TavilyService
+from app.sse.event_publisher import friendly_model_name, push_progress, push_skeleton
 
 logger = logging.getLogger(__name__)
 

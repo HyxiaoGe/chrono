@@ -2,15 +2,16 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Awaitable, Callable
 
 from app.agents.milestone import run_milestone_agent
 from app.models.research import ResearchPhase, ResearchProposal, ResearchThread
 from app.models.runtime import RuntimeTimelineNode
 from app.models.session import ResearchSession
 from app.orchestrator.dedup import merge_and_dedup_runtime_nodes
-from app.orchestrator.event_publisher import friendly_model_name, push_progress, push_skeleton
 from app.orchestrator.messages import get_progress_message
 from app.services.tavily import TavilyService
+from app.sse.event_publisher import friendly_model_name, push_progress, push_skeleton
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +101,7 @@ async def build_skeleton_phase(
 
 async def _build_phased_skeleton(
     phases: list[ResearchPhase],
-    run_thread: callable,
+    run_thread: Callable[..., Awaitable[list[RuntimeTimelineNode]]],
 ) -> list[RuntimeTimelineNode]:
     async def run_phase(phase: ResearchPhase) -> list[RuntimeTimelineNode]:
         async with asyncio.TaskGroup() as tg:

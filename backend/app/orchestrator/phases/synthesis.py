@@ -5,13 +5,13 @@ import logging
 from app.agents.synthesizer import run_synthesizer_agent
 from app.models.runtime import RuntimeResearchState
 from app.models.session import ResearchSession
-from app.orchestrator.event_publisher import (
+from app.orchestrator.messages import get_progress_message
+from app.sse.event_publisher import (
     friendly_model_name,
     push_progress,
     push_skeleton,
     push_synthesis,
 )
-from app.orchestrator.messages import get_progress_message
 
 logger = logging.getLogger(__name__)
 

@@ -34,6 +34,10 @@ class ResearchSession:
         self.cached_research_id = cached_research_id
         self._event_history: list[tuple[SSEEventType, dict[str, Any]]] = []
 
+    @property
+    def has_events(self) -> bool:
+        return bool(self._event_history)
+
     async def push(self, event_type: SSEEventType, data: dict[str, Any]) -> None:
         self._event_history.append((event_type, data))
         if self.status not in (SessionStatus.COMPLETED, SessionStatus.FAILED):

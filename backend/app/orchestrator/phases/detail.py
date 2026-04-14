@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import itertools
 import logging
 
 from pydantic_ai.models import Model
@@ -9,16 +10,16 @@ from app.agents.detail import run_detail_agent
 from app.config import settings
 from app.models.runtime import RuntimeResearchState, RuntimeTimelineNode
 from app.models.session import ResearchSession
-from app.orchestrator.event_publisher import (
+from app.orchestrator.messages import get_progress_message
+from app.orchestrator.verification import RECENT_CUTOFF
+from app.services.llm import resolve_model
+from app.services.tavily import TavilyService
+from app.sse.event_publisher import (
     friendly_model_name,
     push_node_detail,
     push_node_progress,
     push_progress,
 )
-from app.orchestrator.messages import get_progress_message
-from app.orchestrator.verification import RECENT_CUTOFF
-from app.services.llm import resolve_model
-from app.services.tavily import TavilyService
 
 logger = logging.getLogger(__name__)
 
@@ -65,21 +66,19 @@ async def enrich_nodes(
     nodes: list[RuntimeTimelineNode],
 ) -> None:
     sem = asyncio.Semaphore(settings.detail_concurrency)
-    pool_counter = 0
+    counter = itertools.count()
     node_index = {node.id: idx for idx, node in enumerate(state.nodes)}
 
     async def enrich_node(node: RuntimeTimelineNode) -> None:
-        nonlocal pool_counter
         async with sem:
             model_override = None
             model_name_str = settings.detail_model
             if DETAIL_POOL:
-                idx = pool_counter % len(DETAIL_POOL)
+                idx = next(counter) % len(DETAIL_POOL)
                 model_override = DETAIL_POOL[idx]
                 pool_parts = settings.detail_model_pool.split(",")
                 if idx < len(pool_parts):
                     model_name_str = pool_parts[idx].strip()
-                pool_counter += 1
 
             friendly = friendly_model_name(model_name_str)
             await push_node_progress(

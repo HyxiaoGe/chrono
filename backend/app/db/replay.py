@@ -10,7 +10,7 @@ from app.db.redis import update_session_status
 from app.db.repository import get_nodes_for_research
 from app.models.runtime import RuntimeTimelineNode
 from app.models.session import ResearchSession, SessionStatus
-from app.orchestrator.event_publisher import (
+from app.sse.event_publisher import (
     push_complete,
     push_node_detail,
     push_skeleton,
