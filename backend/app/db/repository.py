@@ -22,14 +22,16 @@ async def get_research_by_topic(session: AsyncSession, topic: str) -> ResearchRo
     if row is not None:
         return row
     # Fuzzy: DB topic contains user input, or user input contains DB topic
-    stmt = select(ResearchRow).where(
-        or_(
-            ResearchRow.topic_normalized.contains(normalized),
-            ResearchRow.topic.ilike(
-                f"%{topic.strip().translate(_LIKE_ESCAPE)}%", escape="\\"
-            ),
+    stmt = (
+        select(ResearchRow)
+        .where(
+            or_(
+                ResearchRow.topic_normalized.contains(normalized),
+                ResearchRow.topic.ilike(f"%{topic.strip().translate(_LIKE_ESCAPE)}%", escape="\\"),
+            )
         )
-    ).order_by(ResearchRow.created_at.desc())
+        .order_by(ResearchRow.created_at.desc())
+    )
     result = await session.execute(stmt)
     return result.scalars().first()
 

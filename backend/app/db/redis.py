@@ -81,7 +81,11 @@ def _session_key(session_id: str) -> str:
 
 
 async def store_session(
-    session_id: str, proposal_dict: dict[str, Any], status: str = "proposal_ready"
+    session_id: str,
+    proposal_dict: dict[str, Any],
+    status: str = "proposal_ready",
+    *,
+    cached_research_id: str | None = None,
 ) -> None:
     r = get_redis()
     if r is None:
@@ -89,7 +93,14 @@ async def store_session(
     try:
         await r.set(
             _session_key(session_id),
-            json.dumps({"proposal": proposal_dict, "status": status}, ensure_ascii=False),
+            json.dumps(
+                {
+                    "proposal": proposal_dict,
+                    "status": status,
+                    "cached_research_id": cached_research_id,
+                },
+                ensure_ascii=False,
+            ),
             ex=SESSION_TTL,
         )
     except Exception:
@@ -110,7 +121,12 @@ async def get_session_data(session_id: str) -> dict[str, Any] | None:
         return None
 
 
-async def update_session_status(session_id: str, status: str) -> None:
+async def update_session_status(
+    session_id: str,
+    status: str,
+    *,
+    cached_research_id: Any | None = None,
+) -> None:
     r = get_redis()
     if r is None:
         return
@@ -120,6 +136,8 @@ async def update_session_status(session_id: str, status: str) -> None:
             return
         data = json.loads(raw)
         data["status"] = status
+        if cached_research_id is not None:
+            data["cached_research_id"] = str(cached_research_id)
         await r.set(
             _session_key(session_id),
             json.dumps(data, ensure_ascii=False),
