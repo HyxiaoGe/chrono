@@ -62,7 +62,7 @@ Chrono 是一个基于 Multi-Agent AI 的时间线调研系统。用户输入任
 | **后端 Web 框架** | FastAPI (Python) | SSE 流式推送 |
 | **顶层编排** | Python asyncio | 全程在线的 Orchestrator |
 | **子 Agent 实现** | Pydantic AI | 类型安全的结构化输出 |
-| **LLM 网关** | OpenRouter | 统一接入多模型，一个 API Key |
+| **LLM 网关** | 直连各厂商 API | DeepSeek / Qwen / Moonshot 等 |
 | **搜索** | Tavily | 专为 AI Agent 设计的搜索 API |
 | **前后端通信** | SSE (Server-Sent Events) | 实时流式推送进度和数据 |
 | **部署** | Vercel + Railway/Fly.io | 前端 Vercel，后端 Railway/Fly.io |
@@ -212,7 +212,7 @@ Milestone Agent 的工作分四步：
 | **日文** | Gemini 2.5 Pro / GPT-4o | Gemini 2.5 Flash | Gemini/GPT 日文更好 |
 | **其他** | Claude Sonnet 4.5 | GPT-4o-mini | 安全默认选择 |
 
-所有模型通过 OpenRouter 统一调用，切换模型只需改一个字符串，零代码改动。
+所有模型直连各厂商 API，切换模型只需改一个配置字符串（格式 `provider:model_name`），零代码改动。
 
 ### 5.3 搜索策略
 
@@ -330,7 +330,7 @@ Epic 级调研节点多，不可能每个都深入调研。采用"**广度优先
 - FastAPI + SSE 基础设施
 - Orchestrator 核心逻辑（评估 + 调度 + 监控）
 - Pydantic AI 子 Agent 模板
-- OpenRouter + Tavily 集成
+- 多厂商 LLM 直连 + Tavily 集成
 
 **Phase 2: 前后端对接**
 

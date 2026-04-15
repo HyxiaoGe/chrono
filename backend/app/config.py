@@ -3,7 +3,6 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # --- API Keys ---
-    openrouter_api_key: str
     tavily_api_key: str
     deepseek_api_key: str = ""
     moonshot_api_key: str = ""
@@ -14,15 +13,15 @@ class Settings(BaseSettings):
     database_url: str = ""
     redis_url: str = ""
 
-    # --- 模型分配（前缀决定路由，无前缀默认走 OpenRouter）---
-    orchestrator_model: str = "openrouter:google/gemini-3-flash-preview"
-    milestone_model: str = "openrouter:deepseek/deepseek-chat"
-    detail_model: str = "openrouter:deepseek/deepseek-chat"
-    dedup_model: str = "openrouter:deepseek/deepseek-chat"
-    hallucination_model: str = "openrouter:deepseek/deepseek-chat"
-    similar_topic_model: str = "openrouter:deepseek/deepseek-chat"
-    gap_analysis_model: str = "openrouter:google/gemini-3-flash-preview"
-    synthesizer_model: str = "openrouter:anthropic/claude-sonnet-4-5"
+    # --- 模型分配（格式: provider:model_name，直连各厂商 API）---
+    orchestrator_model: str = "qwen:qwen-max"
+    milestone_model: str = "deepseek:deepseek-chat"
+    detail_model: str = "deepseek:deepseek-chat"
+    dedup_model: str = "deepseek:deepseek-chat"
+    hallucination_model: str = "deepseek:deepseek-chat"
+    similar_topic_model: str = "deepseek:deepseek-chat"
+    gap_analysis_model: str = "qwen:qwen-max"
+    synthesizer_model: str = "qwen:qwen-max"
 
     detail_model_pool: str = ""
     detail_concurrency: int = 4
