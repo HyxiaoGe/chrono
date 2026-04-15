@@ -11,6 +11,9 @@ services:
       - ./backend:/app
     restart: unless-stopped
     mem_limit: 256m
+    networks:
+      - default
+      - litellm_net
 
   frontend:
     build:
@@ -23,3 +26,8 @@ services:
       - "3003:3000"
     restart: unless-stopped
     mem_limit: 128m
+
+networks:
+  litellm_net:
+    external: true
+    name: litellm-proxy_default

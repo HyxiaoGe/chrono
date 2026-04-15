@@ -10,7 +10,7 @@ Usage:
 
 Requires:
     - DATABASE_URL configured in .env
-    - Provider API keys (DEEPSEEK_API_KEY, QWEN_API_KEY, etc.) configured in .env
+    - LITELLM_API_KEY configured in .env
     - At least one completed research in the DB
 
 Output:
@@ -44,7 +44,7 @@ from app.services.llm import resolve_model  # noqa: E402
 # Model A: current default
 MODEL_A_NAME = settings.dedup_model
 # Model B: candidate replacement
-MODEL_B_NAME = "deepseek:deepseek-chat"
+MODEL_B_NAME = "deepseek/deepseek-chat"
 
 # Topics to test (will match by normalized topic)
 TARGET_TOPICS = ["iphone", "人工智能", "二战"]

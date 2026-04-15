@@ -212,7 +212,7 @@ Milestone Agent 的工作分四步：
 | **日文** | Gemini 2.5 Pro / GPT-4o | Gemini 2.5 Flash | Gemini/GPT 日文更好 |
 | **其他** | Claude Sonnet 4.5 | GPT-4o-mini | 安全默认选择 |
 
-所有模型直连各厂商 API，切换模型只需改一个配置字符串（格式 `provider:model_name`），零代码改动。
+所有模型通过 LiteLLM Proxy 路由，切换模型只需改一个配置字符串（格式 `provider/model_name`），零代码改动。
 
 ### 5.3 搜索策略
 
