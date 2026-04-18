@@ -49,7 +49,7 @@ export function MiniMap({
   const lastYearLabel = nodes.length > 0 ? `'${nodes[nodes.length - 1].date.slice(2, 4)}` : null;
 
   return (
-    <div className="sticky top-20 w-[72px] shrink-0">
+    <div className="sticky top-20 w-[72px] shrink-0 self-start">
       {/* Header */}
       <div className="mb-3 flex items-center gap-1.5 px-2">
         <span className="text-chrono-tiny uppercase tracking-wider text-chrono-text-muted font-medium">{isZh ? "导航" : "Map"}</span>
