@@ -1,624 +1,191 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
-import type {
-  TimelineNode,
-  SynthesisData,
-  CompleteData,
-  ResearchProposal,
-  NodeProgressData,
-} from "@/types";
-import type { ConnectionMap } from "@/hooks/useConnections";
-import type { PhaseGroup } from "@/utils/timeline";
-import { computeDenseGroups } from "@/utils/timeline";
-import { TimelineNodeCard } from "./TimelineNode";
-import { DenseGroupBlock } from "./DenseGroup";
-import { ExportDropdown } from "./ExportDropdown";
+import { useState, useMemo, useLayoutEffect, useRef } from "react";
+import type { TimelineNode, TimelineConnection } from "@/types";
+import NodeCard from "@/components/NodeCard";
+import AxisDot from "@/components/AxisDot";
+import YearSeparator from "@/components/YearSeparator";
+import ConnectionLines from "@/components/ConnectionLines";
 
-interface Props {
+interface TimelineProps {
   nodes: TimelineNode[];
-  progressMessage: string;
-  synthesisData: SynthesisData | null;
-  completeData: CompleteData | null;
-  proposal: ResearchProposal | null;
-  language: string;
-  selectedNodeId: string | null;
-  highlightedNodeId: string | null;
-  onSelectNode: (id: string) => void;
-  connectionMap: ConnectionMap;
-  phaseGroups: PhaseGroup[];
-  researchPhase: string;
-  researchModel: string;
-  researchStartTime: number;
-  nodeProgressMap: Map<string, NodeProgressData>;
+  connections: TimelineConnection[];
+  selectedId: string | null;
+  hoveredId: string | null;
+  onSelect: (id: string) => void;
+  onHover: (id: string | null) => void;
 }
 
-// --- Year separators ---
-
-interface Separator {
-  label: string;
-  insertBeforeIndex: number;
-}
-
-function computeSeparators(nodes: TimelineNode[]): Separator[] {
-  if (nodes.length === 0) return [];
-
-  const years = nodes.map((n) => {
-    const y = parseInt(n.date.slice(0, 4), 10);
-    return isNaN(y) ? 0 : y;
-  });
-
-  const changePoints: { index: number; year: number; prevYear: number }[] = [];
-  for (let i = 1; i < years.length; i++) {
-    if (years[i] !== years[i - 1] && years[i] !== 0 && years[i - 1] !== 0) {
-      changePoints.push({ index: i, year: years[i], prevYear: years[i - 1] });
-    }
-  }
-
-  if (changePoints.length === 0) return [];
-
-  const separators: Separator[] = [];
-  let i = 0;
-
-  while (i < changePoints.length) {
-    const start = changePoints[i];
-    let j = i;
-
-    while (
-      j + 1 < changePoints.length &&
-      changePoints[j + 1].year - changePoints[j].year <= 2 &&
-      changePoints[j + 1].index - changePoints[j].index <= 2
-    ) {
-      j++;
-    }
-
-    if (j - i >= 2) {
-      const startDecade = Math.floor(start.prevYear / 10) * 10;
-      const endDecade = Math.floor(changePoints[j].year / 10) * 10;
-      if (startDecade === endDecade) {
-        separators.push({
-          label: `${startDecade}s`,
-          insertBeforeIndex: start.index,
-        });
-      } else {
-        separators.push({
-          label: `${start.prevYear}`,
-          insertBeforeIndex: start.index,
-        });
-        for (let k = i + 1; k <= j; k++) {
-          const decade = Math.floor(changePoints[k].year / 10) * 10;
-          const prevDecade = Math.floor(changePoints[k].prevYear / 10) * 10;
-          if (decade !== prevDecade) {
-            separators.push({
-              label: `${changePoints[k].year}`,
-              insertBeforeIndex: changePoints[k].index,
-            });
-          }
-        }
-      }
-    } else {
-      for (let k = i; k <= j; k++) {
-        separators.push({
-          label: `${changePoints[k].year}`,
-          insertBeforeIndex: changePoints[k].index,
-        });
-      }
-    }
-
-    i = j + 1;
-  }
-
-  return separators;
-}
-
-// --- Dot class ---
-
-function dotClass(sig: string): string {
-  if (sig === "revolutionary") {
-    return "h-4 w-4 rounded-full bg-chrono-revolutionary ring-4 ring-chrono-revolutionary/20";
-  }
-  if (sig === "high") {
-    return "h-3 w-3 rounded-full bg-chrono-high";
-  }
-  return "h-2 w-2 rounded-full bg-chrono-medium";
-}
-
-// --- Collapsible section ---
-
-function CollapsibleSection({
-  title,
-  count,
-  children,
-  language,
-}: {
-  title: string;
-  count: number;
-  children: React.ReactNode;
-  language: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const isZh = language.startsWith("zh");
-  return (
-    <div className="mt-3">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 text-chrono-tiny text-chrono-text-muted transition-colors hover:text-chrono-text-secondary"
-      >
-        <span>{open ? "▾" : "▸"}</span>
-        <span>{title}</span>
-        <span className="rounded-full bg-chrono-border px-1.5 py-0.5 text-chrono-tiny">
-          {count} {isZh ? "条" : ""}
-        </span>
-      </button>
-      {open && <div className="mt-2 space-y-1 pl-4">{children}</div>}
-    </div>
-  );
-}
-
-// --- Synthesis block ---
-
-function SynthesisBlock({
-  synthesisData,
-  nodes,
-  connections,
-  dateCorrections,
-  language,
-  isZh,
-}: {
-  synthesisData: SynthesisData;
-  nodes: TimelineNode[];
-  connections: SynthesisData["connections"];
-  dateCorrections: SynthesisData["date_corrections"];
-  language: string;
-  isZh: boolean;
-}) {
-  const [summaryExpanded, setSummaryExpanded] = useState(false);
-  const longSummary = synthesisData.summary.length > 200;
-
-  return (
-    <div className="mb-8 animate-fade-in rounded-lg border border-chrono-border bg-chrono-surface/50 px-6 py-4">
-      <h3 className="mb-2 text-chrono-caption font-medium text-chrono-text-secondary">
-        {isZh ? "调研总结" : "Research Summary"}
-      </h3>
-      <p
-        className={`mb-2 text-chrono-body leading-relaxed text-chrono-text ${summaryExpanded ? "" : "line-clamp-3"}`}
-      >
-        {synthesisData.summary}
-      </p>
-      {longSummary && (
-        <button
-          onClick={() => setSummaryExpanded(!summaryExpanded)}
-          className="mb-2 text-chrono-tiny text-chrono-text-muted transition-colors hover:text-chrono-text-secondary"
-        >
-          {summaryExpanded ? (isZh ? "收起" : "Less") : (isZh ? "展开全文" : "More")}
-        </button>
-      )}
-      <p className="text-chrono-caption italic text-chrono-text-secondary">
-        {synthesisData.key_insight}
-      </p>
-
-      {/* Stats */}
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        <span className="rounded-full bg-chrono-bg/60 border border-chrono-border/30 px-2.5 py-0.5 text-chrono-tiny text-chrono-text-muted">
-          <span className="text-chrono-text">{nodes.length}</span> {isZh ? "节点" : "nodes"}
-        </span>
-        <span className="rounded-full bg-chrono-bg/60 border border-chrono-border/30 px-2.5 py-0.5 text-chrono-tiny text-chrono-text-muted">
-          <span className="text-chrono-text">{synthesisData.source_count}</span> {isZh ? "来源" : "sources"}
-        </span>
-        {connections && connections.length > 0 && (
-          <span className="rounded-full bg-chrono-bg/60 border border-chrono-border/30 px-2.5 py-0.5 text-chrono-tiny text-chrono-text-muted">
-            <span className="text-chrono-text">{connections.length}</span> {isZh ? "关联" : "connections"}
-          </span>
-        )}
-        {synthesisData.timeline_span && (
-          <span className="rounded-full bg-chrono-bg/60 border border-chrono-border/30 px-2.5 py-0.5 text-chrono-tiny text-chrono-text-muted">
-            {synthesisData.timeline_span}
-          </span>
-        )}
-      </div>
-
-      {/* Verification notes — collapsible */}
-      {synthesisData.verification_notes.length > 0 && (
-        <CollapsibleSection
-          title={isZh ? "验证备注" : "Verification Notes"}
-          count={synthesisData.verification_notes.length}
-          language={language}
-        >
-          {synthesisData.verification_notes.map((note, i) => (
-            <p key={i} className="text-chrono-tiny text-chrono-text-muted">
-              {note}
-            </p>
-          ))}
-        </CollapsibleSection>
-      )}
-
-      {/* Date corrections collapsible */}
-      {dateCorrections && dateCorrections.length > 0 && (
-        <CollapsibleSection
-          title={isZh ? "日期修正记录" : "Date Corrections"}
-          count={dateCorrections.length}
-          language={language}
-        >
-          {dateCorrections.map((corr) => {
-            const nodeTitle =
-              nodes.find((n) => n.id === corr.node_id)?.title ??
-              corr.node_id;
-            return (
-              <div
-                key={corr.node_id}
-                className="text-chrono-tiny text-chrono-text-muted"
-              >
-                {nodeTitle}: {corr.original_date} → {corr.corrected_date}
-                <span className="ml-2 opacity-60">({corr.reason})</span>
-              </div>
-            );
-          })}
-        </CollapsibleSection>
-      )}
-    </div>
-  );
-}
-
-// --- Research progress indicator ---
-
-const PHASES = [
-  { key: "skeleton", zh: "构建骨架", en: "Skeleton" },
-  { key: "detail", zh: "补充详情", en: "Detail" },
-  { key: "analysis", zh: "完整性分析", en: "Analysis" },
-  { key: "synthesis", zh: "生成总结", en: "Synthesis" },
-];
-
-function ResearchProgress({
-  phase,
-  model,
-  startTime,
-  nodes,
-  progressMessage,
-  isZh,
-}: {
-  phase: string;
-  model: string;
-  startTime: number;
-  nodes: TimelineNode[];
-  progressMessage: string;
-  isZh: boolean;
-}) {
-  const [elapsed, setElapsed] = useState(0);
-
-  useEffect(() => {
-    const timer = setInterval(() => setElapsed(Math.floor((Date.now() - startTime) / 1000)), 1000);
-    return () => clearInterval(timer);
-  }, [startTime]);
-
-  const currentIdx = PHASES.findIndex((p) => p.key === phase);
-  const completed = nodes.filter((n) => n.status === "complete").length;
-  const total = nodes.length;
-
-  const minutes = Math.floor(elapsed / 60);
-  const seconds = elapsed % 60;
-  const timeStr = minutes > 0
-    ? `${minutes}:${String(seconds).padStart(2, "0")}`
-    : `${seconds}s`;
-
-  return (
-    <div className="mb-6 rounded-lg border border-chrono-border bg-chrono-surface px-5 py-3 backdrop-blur-md" data-export-hide>
-      {/* Phase steps */}
-      <div className="flex items-center gap-1">
-        {PHASES.map((p, i) => {
-          const isActive = p.key === phase;
-          const isDone = i < currentIdx;
-          return (
-            <div key={p.key} className="flex items-center gap-1">
-              {i > 0 && (
-                <div className={`h-px w-4 ${isDone ? "bg-chrono-accent" : "bg-chrono-border"}`} />
-              )}
-              <div className="flex items-center gap-1.5">
-                <div
-                  className={`h-1.5 w-1.5 rounded-full ${
-                    isDone
-                      ? "bg-chrono-accent"
-                      : isActive
-                        ? "bg-chrono-accent animate-pulse"
-                        : "bg-chrono-border"
-                  }`}
-                />
-                <span
-                  className={`text-chrono-tiny ${
-                    isActive
-                      ? "text-chrono-accent font-medium"
-                      : isDone
-                        ? "text-chrono-text-secondary"
-                        : "text-chrono-text-muted/50"
-                  }`}
-                >
-                  {isZh ? p.zh : p.en}
-                </span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Stats row */}
-      <div className="mt-2 flex items-center gap-3 text-chrono-tiny text-chrono-text-muted">
-        {model && (
-          <span className="rounded bg-chrono-accent/10 px-1.5 py-0.5 text-chrono-accent/70">
-            {model}
-          </span>
-        )}
-        {phase === "detail" && total > 0 ? (
-          <span>
-            {completed}/{total} {isZh ? "已完成" : "done"}
-          </span>
-        ) : progressMessage ? (
-          <span className="text-chrono-text-secondary">{progressMessage}</span>
-        ) : null}
-        <span className="ml-auto tabular-nums">{timeStr}</span>
-      </div>
-    </div>
-  );
-}
-
-// --- Main component ---
+type SepRow = { kind: "sep"; year: number; era?: string | null; key: string };
+type NodeRow = {
+  kind: "node";
+  node: TimelineNode;
+  side: "left" | "right";
+  key: string;
+};
+type Row = SepRow | NodeRow;
 
 export function Timeline({
   nodes,
-  progressMessage,
-  synthesisData,
-  completeData,
-  proposal,
-  language,
-  selectedNodeId,
-  highlightedNodeId,
-  onSelectNode,
-  connectionMap,
-  phaseGroups,
-  researchPhase,
-  researchModel,
-  researchStartTime,
-  nodeProgressMap,
-}: Props) {
-  const isZh = language.startsWith("zh");
-  const separators = computeSeparators(nodes);
-
-  const isResearchDone = completeData !== null;
-  const denseGroups = useMemo(
-    () => (isResearchDone ? computeDenseGroups(nodes) : []),
-    [nodes, isResearchDone],
+  connections,
+  selectedId,
+  hoveredId,
+  onSelect,
+  onHover,
+}: TimelineProps) {
+  const [positions, setPositions] = useState<Record<string, { top: number }>>(
+    {},
   );
-  const denseNodeSet = useMemo(
-    () => new Set(denseGroups.flatMap((g) => g.nodeIds)),
-    [denseGroups],
-  );
-  const denseGroupMap = useMemo(
-    () => new Map(denseGroups.map((g) => [g.startIndex, g])),
-    [denseGroups],
-  );
+  const [containerH, setContainerH] = useState(0);
+  const innerRef = useRef<HTMLDivElement>(null);
 
-  // Build set of indices inside dense groups (for separator suppression)
-  const denseInnerIndices = useMemo(() => {
-    const set = new Set<number>();
-    for (const g of denseGroups) {
-      for (let i = g.startIndex + 1; i <= g.endIndex; i++) set.add(i);
-    }
-    return set;
-  }, [denseGroups]);
+  // Measure node vertical positions for SVG connection overlay
+  useLayoutEffect(() => {
+    const measure = () => {
+      const inner = innerRef.current;
+      if (!inner) return;
+      const rect = inner.getBoundingClientRect();
+      const pos: Record<string, { top: number }> = {};
+      nodes.forEach((n) => {
+        const el = inner.querySelector<HTMLElement>(
+          `[data-node-id="${n.id}"]`,
+        );
+        if (el) {
+          const er = el.getBoundingClientRect();
+          pos[n.id] = { top: er.top - rect.top + er.height / 2 };
+        }
+      });
+      setPositions(pos);
+      setContainerH(rect.height);
+    };
 
-  const phaseStartSet = new Set(phaseGroups.map((g) => g.startIndex));
-  const filteredSeparators = separators.filter(
-    (s) =>
-      !phaseStartSet.has(s.insertBeforeIndex) &&
-      !denseInnerIndices.has(s.insertBeforeIndex),
-  );
-  const sepMap = new Map(
-    filteredSeparators.map((s) => [s.insertBeforeIndex, s.label]),
-  );
-  const phaseMap = new Map(phaseGroups.map((g) => [g.startIndex, g]));
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (innerRef.current) ro.observe(innerRef.current);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [nodes]);
 
-  const connections = synthesisData?.connections;
-  const dateCorrections = synthesisData?.date_corrections;
+  // Build rows: year separators + alternating node cards
+  const rows = useMemo<Row[]>(() => {
+    const out: Row[] = [];
+    let prevYear: number | null = null;
+    nodes.forEach((n, idx) => {
+      const year = parseInt(n.date.slice(0, 4), 10);
+      if (prevYear === null || year !== prevYear) {
+        out.push({ kind: "sep", year, key: `y-${year}-${idx}` });
+      }
+      out.push({
+        kind: "node",
+        node: n,
+        side: idx % 2 === 0 ? "right" : "left",
+        key: n.id,
+      });
+      prevYear = year;
+    });
+    return out;
+  }, [nodes]);
 
-  const completionTimeStr = useMemo(() => {
-    if (!completeData) return "";
-    const totalSec = Math.floor((Date.now() - researchStartTime) / 1000);
-    const m = Math.floor(totalSec / 60);
-    const s = totalSec % 60;
-    return m > 0 ? `${m}:${String(s).padStart(2, "0")}` : `${s}s`;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [completeData]);
+  // Related node highlighting -- only active on hover (not selection alone)
+  const activeId = hoveredId;
+  const related = useMemo(() => {
+    if (!activeId) return new Set<string>();
+    const s = new Set<string>();
+    connections.forEach((c) => {
+      if (c.from_id === activeId) s.add(c.to_id);
+      if (c.to_id === activeId) s.add(c.from_id);
+    });
+    return s;
+  }, [activeId, connections]);
 
-  const connectedNodeIds = useMemo(() => {
-    if (!selectedNodeId) return null;
-    const info = connectionMap.get(selectedNodeId);
-    if (!info) return null;
-    const ids = new Set<string>();
-    ids.add(selectedNodeId);
-    for (const c of info.outgoing) ids.add(c.targetId);
-    for (const c of info.incoming) ids.add(c.sourceId);
-    return ids.size > 1 ? ids : null;
-  }, [selectedNodeId, connectionMap]);
+  const hasActive = !!activeId;
 
   return (
-    <div id="chrono-timeline" className="mx-auto max-w-3xl px-4 py-8">
-      {/* Research progress — sticky */}
-      {!completeData && researchPhase && (
-        <div className="sticky top-14 z-20">
-          <ResearchProgress
-            phase={researchPhase}
-            model={researchModel}
-            startTime={researchStartTime}
-            nodes={nodes}
-            progressMessage={progressMessage}
-            isZh={isZh}
-          />
-        </div>
-      )}
+    <div className="relative">
+      <div ref={innerRef} className="relative">
+        {/* Central axis line */}
+        <div className="absolute left-1/2 top-0 bottom-0 w-px -translate-x-1/2 bg-chrono-border/60" />
 
-      {/* Complete status */}
-      {completeData && (
-        <div className="mb-8 flex items-center justify-center gap-3 text-chrono-caption text-chrono-text-muted">
-          <span>
-            {isZh
-              ? `调研完成 · ${completeData.total_nodes} 个节点 · ${completeData.detail_completed} 个已补充详情 · 耗时 ${completionTimeStr}`
-              : `Research complete · ${completeData.total_nodes} nodes · ${completeData.detail_completed} enriched · ${completionTimeStr}`}
-          </span>
-          <ExportDropdown
-            proposal={proposal}
-            nodes={nodes}
-            synthesisData={synthesisData}
-            completeData={completeData}
-            phaseGroups={phaseGroups}
-            timelineContainerId="chrono-timeline"
-            language={language}
-          />
-        </div>
-      )}
-
-      {/* Synthesis summary */}
-      {synthesisData && (
-        <SynthesisBlock
-          synthesisData={synthesisData}
-          nodes={nodes}
+        {/* SVG connection overlay */}
+        <ConnectionLines
           connections={connections}
-          dateCorrections={dateCorrections}
-          language={language}
-          isZh={isZh}
+          positions={positions}
+          containerHeight={containerH}
+          hoveredId={hoveredId}
         />
-      )}
 
-      {/* Timeline */}
-      <div className="relative">
-        {/* Continuous vertical line */}
-        <div className="absolute left-20 top-0 bottom-0 w-px bg-chrono-timeline" />
+        {/* Rows */}
+        <div className="relative z-10">
+          {rows.map((r) => {
+            if (r.kind === "sep") {
+              return (
+                <YearSeparator key={r.key} year={r.year} era={r.era} />
+              );
+            }
 
-        {nodes.map((node, index) => {
-          // Skip nodes inside a dense group (but not the first node)
-          if (denseNodeSet.has(node.id) && !denseGroupMap.has(index)) return null;
+            const n = r.node;
+            const side = r.side;
+            const isSel = selectedId === n.id;
+            const isRel = related.has(n.id);
+            const dimmed =
+              hasActive && !isSel && !isRel && activeId !== n.id;
 
-          const sepLabel = sepMap.get(index);
-          const phaseGroup = phaseMap.get(index);
-          const denseGroup = denseGroupMap.get(index);
-
-          if (denseGroup) {
             return (
-              <div key={`dense-${denseGroup.startIndex}`}>
-                {/* Phase header */}
-                {phaseGroup && (
-                  <div className={`mb-6 ${index > 0 ? "mt-12" : ""}`}>
-                    <div className="mb-4 h-px bg-gradient-to-r from-transparent via-chrono-border to-transparent" />
-                    <div className="flex items-start">
-                      <div className="w-16 shrink-0" />
-                      <div className="w-8 shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <h2 className="text-chrono-title font-semibold text-chrono-text">
-                          {phaseGroup.name}
-                        </h2>
-                        <span className="text-chrono-caption text-chrono-text-muted">
-                          {phaseGroup.timeRange}
-                        </span>
-                      </div>
+              <div
+                key={r.key}
+                className="relative grid grid-cols-[1fr_auto_1fr] items-center gap-4 mb-5"
+              >
+                {/* Left cell */}
+                <div className="flex justify-end pr-4">
+                  {side === "left" ? (
+                    <div
+                      className="w-full max-w-[440px]"
+                      data-node-id={n.id}
+                    >
+                      <NodeCard
+                        node={n}
+                        isSelected={isSel}
+                        isRelated={isRel}
+                        dimmed={dimmed}
+                        onClick={onSelect}
+                        onHover={onHover}
+                        side="left"
+                      />
                     </div>
-                  </div>
-                )}
-                {/* Year separator before group */}
-                {sepLabel && (
-                  <div className="mb-4 flex items-center">
-                    <div className="w-16 shrink-0" />
-                    <div className="flex w-8 shrink-0 justify-center">
-                      <div className="h-px w-6 bg-chrono-border" />
+                  ) : null}
+                </div>
+
+                {/* Axis dot */}
+                <div className="relative flex items-center justify-center w-6">
+                  <AxisDot significance={n.significance} />
+                </div>
+
+                {/* Right cell */}
+                <div className="flex justify-start pl-4">
+                  {side === "right" ? (
+                    <div
+                      className="w-full max-w-[440px]"
+                      data-node-id={n.id}
+                    >
+                      <NodeCard
+                        node={n}
+                        isSelected={isSel}
+                        isRelated={isRel}
+                        dimmed={dimmed}
+                        onClick={onSelect}
+                        onHover={onHover}
+                        side="right"
+                      />
                     </div>
-                    <span className="pl-1 text-chrono-body font-medium text-chrono-text-secondary">
-                      {sepLabel}
-                    </span>
-                  </div>
-                )}
-                <DenseGroupBlock
-                  group={denseGroup}
-                  nodes={nodes}
-                  selectedNodeId={selectedNodeId}
-                  highlightedNodeId={highlightedNodeId}
-                  connectedNodeIds={connectedNodeIds}
-                  onSelectNode={onSelectNode}
-                  connectionMap={connectionMap}
-                  language={language}
-                />
+                  ) : null}
+                </div>
               </div>
             );
-          }
-
-          const connInfo = connectionMap.get(node.id);
-          const connCount = connInfo
-            ? connInfo.outgoing.length + connInfo.incoming.length
-            : 0;
-
-          return (
-            <div
-              key={node.id}
-              id={node.id}
-            >
-              {/* Phase header */}
-              {phaseGroup && (
-                <div
-                  className={`mb-6 ${index > 0 ? "mt-12" : ""}`}
-                >
-                  <div className="mb-4 h-px bg-gradient-to-r from-transparent via-chrono-border to-transparent" />
-                  <div className="flex items-start">
-                    <div className="w-16 shrink-0" />
-                    <div className="w-8 shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <h2 className="text-chrono-title font-semibold text-chrono-text">
-                        {phaseGroup.name}
-                      </h2>
-                      <span className="text-chrono-caption text-chrono-text-muted">
-                        {phaseGroup.timeRange}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Year separator */}
-              {sepLabel && (
-                <div className="mb-4 flex items-center">
-                  <div className="w-16 shrink-0" />
-                  <div className="flex w-8 shrink-0 justify-center">
-                    <div className="h-px w-6 bg-chrono-border" />
-                  </div>
-                  <span className="pl-1 text-chrono-body font-medium text-chrono-text-secondary">
-                    {sepLabel}
-                  </span>
-                </div>
-              )}
-
-              {/* Node entry */}
-              <div className="mb-6 flex items-start">
-                {/* Date label */}
-                <div className="w-16 shrink-0 pt-2 text-right text-chrono-tiny text-chrono-text-muted">
-                  {node.date}
-                </div>
-
-                {/* Dot column */}
-                <div className="flex w-8 shrink-0 justify-center pt-2">
-                  <div className={dotClass(node.significance)} />
-                </div>
-
-                {/* Card */}
-                <div className="min-w-0 flex-1">
-                  <TimelineNodeCard
-                    node={node}
-                    isSelected={selectedNodeId === node.id}
-                    isHighlighted={highlightedNodeId === node.id}
-                    isDimmed={connectedNodeIds !== null && !connectedNodeIds.has(node.id)}
-                    connectionCount={connCount}
-                    onSelect={onSelectNode}
-                    language={language}
-                    progress={nodeProgressMap.get(node.id)}
-                  />
-                </div>
-              </div>
-            </div>
-          );
-        })}
+          })}
+        </div>
       </div>
     </div>
   );
