@@ -17,13 +17,17 @@ import { useLocale } from "@/data/landing";
 import { useResearchStream } from "@/hooks/useResearchStream";
 import { useConnections } from "@/hooks/useConnections";
 import { useActiveNode } from "@/hooks/useActiveNode";
-import { computePhaseGroups } from "@/utils/timeline";
 import { AppShell } from "./AppShell";
 import { ProposalCard } from "./ProposalCard";
 import { Timeline } from "./Timeline";
 import { DetailPanel } from "./DetailPanel";
 import { MiniMap } from "./MiniMap";
 import { SimilarTopicCard } from "./SimilarTopicCard";
+import TopBar from "./TopBar";
+import ProgressBar from "./ProgressBar";
+import CompletionBanner from "./CompletionBanner";
+import SynthesisBanner from "./SynthesisBanner";
+import SkeletonNode from "./SkeletonNode";
 
 const ACTIVE_SESSION_KEY = "chrono-active-session";
 
@@ -78,10 +82,13 @@ export function SessionView({ sessionId }: Props) {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [miniMapHoveredId, setMiniMapHoveredId] = useState<string | null>(null);
-  const [scrollTop, setScrollTop] = useState(0);
-  const [scrollHeight, setScrollHeight] = useState(0);
-  const [viewportHeight, setViewportHeight] = useState(0);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [elapsed, setElapsed] = useState(0);
+  const [scrollState, setScrollState] = useState({
+    scrollTop: 0,
+    scrollHeight: 1,
+    viewportHeight: 1,
+  });
 
   const [researchPhase, setResearchPhase] = useState<string>("");
   const [researchModel, setResearchModel] = useState<string>("");
@@ -97,7 +104,7 @@ export function SessionView({ sessionId }: Props) {
     didInit.current = true;
 
     if (sessionId === "new") {
-      // New search — POST to create session
+      // New search -- POST to create session
       const topic = searchParams.get("topic");
       if (!topic) {
         setPhase("error");
@@ -143,7 +150,7 @@ export function SessionView({ sessionId }: Props) {
       return;
     }
 
-    // Existing session — fetch status
+    // Existing session -- fetch status
     fetch(`/api/research/${sessionId}/status`)
       .then((res) => {
         if (!res.ok) throw new Error("not_found");
@@ -171,21 +178,34 @@ export function SessionView({ sessionId }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Track scroll position for MiniMap viewport indicator
+  // --- Elapsed timer (for ProgressBar) ---
   useEffect(() => {
-    function updateScroll() {
-      setScrollTop(window.scrollY);
-      setScrollHeight(document.documentElement.scrollHeight);
-      setViewportHeight(window.innerHeight);
-    }
-    updateScroll();
-    window.addEventListener("scroll", updateScroll, { passive: true });
-    window.addEventListener("resize", updateScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", updateScroll);
-      window.removeEventListener("resize", updateScroll);
+    if (completeData) return;
+    if (phase !== "research") return;
+    const timer = setInterval(
+      () => setElapsed(Math.floor((Date.now() - researchStartTime) / 1000)),
+      1000,
+    );
+    return () => clearInterval(timer);
+  }, [researchStartTime, completeData, phase]);
+
+  // --- Scroll tracking for MiniMap viewport indicator ---
+  useEffect(() => {
+    const onScroll = () => {
+      setScrollState({
+        scrollTop: window.scrollY,
+        scrollHeight: document.documentElement.scrollHeight,
+        viewportHeight: window.innerHeight,
+      });
     };
-  }, []);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [nodes.length, selectedNodeId]);
 
   function handleConfirm() {
     if (!proposal || !realSessionId) return;
@@ -381,10 +401,15 @@ export function SessionView({ sessionId }: Props) {
 
   // --- Derived ---
   const language = proposal?.language ?? "en";
-  const selectedNode =
-    selectedNodeId ? (nodes.find((n) => n.id === selectedNodeId) ?? null) : null;
   const connectionMap = useConnections(synthesisData?.connections, nodes);
-  const phaseGroups = useMemo(() => computePhaseGroups(nodes), [nodes]);
+  const connections = synthesisData?.connections ?? [];
+
+  const completionTimeStr = useMemo(() => {
+    if (!completeData) return "";
+    const m = Math.floor(elapsed / 60);
+    const s = elapsed % 60;
+    return m > 0 ? `${m}:${String(s).padStart(2, "0")}` : `0:${String(s).padStart(2, "0")}`;
+  }, [completeData, elapsed]);
 
   const nodeIds = useMemo(() => nodes.map((n) => n.id), [nodes]);
   const activeNodeId = useActiveNode(nodeIds);
@@ -395,139 +420,195 @@ export function SessionView({ sessionId }: Props) {
   const activeYear = activeNode ? activeNode.date.slice(0, 4) : null;
   const activePhase = activeNode?.phase_name ?? null;
 
-  return (
-    <AppShell
-      locale={locale}
-      onToggleLocale={toggleLocale}
-      mode="session"
-      topic={proposal?.topic ?? searchParams.get("topic") ?? undefined}
-      activeYear={activeYear}
-      activePhase={activePhase}
-      onBack={handleNewResearch}
-    >
-      {phase === "loading" && (
-        <div className="flex min-h-[calc(100vh-3.5rem)] flex-col items-center justify-center px-4">
-          <div className="w-full max-w-xl animate-pulse rounded-2xl border border-chrono-border bg-chrono-surface/80 p-8">
-            <div className="flex items-center gap-3">
-              <div className="h-6 w-40 rounded bg-chrono-border" />
-              <div className="flex gap-1">
-                {Array.from({ length: 4 }, (_, i) => (
-                  <div key={i} className="h-2 w-2 rounded-full bg-chrono-border" />
-                ))}
+  // --- Non-research phases: wrapped in AppShell ---
+  if (phase !== "research") {
+    return (
+      <AppShell
+        locale={locale}
+        onToggleLocale={toggleLocale}
+        mode="session"
+        topic={proposal?.topic ?? searchParams.get("topic") ?? undefined}
+        activeYear={activeYear}
+        activePhase={activePhase}
+        onBack={handleNewResearch}
+      >
+        {phase === "loading" && (
+          <div className="flex min-h-[calc(100vh-3.5rem)] flex-col items-center justify-center px-4">
+            <div className="w-full max-w-xl animate-pulse rounded-2xl border border-chrono-border bg-chrono-surface/80 p-8">
+              <div className="flex items-center gap-3">
+                <div className="h-6 w-40 rounded bg-chrono-border" />
+                <div className="flex gap-1">
+                  {Array.from({ length: 4 }, (_, i) => (
+                    <div key={i} className="h-2 w-2 rounded-full bg-chrono-border" />
+                  ))}
+                </div>
+                <div className="h-4 w-24 rounded bg-chrono-border" />
               </div>
-              <div className="h-4 w-24 rounded bg-chrono-border" />
-            </div>
-            <div className="mt-3 h-4 w-full rounded bg-chrono-border" />
-            <div className="mt-1.5 h-4 w-3/4 rounded bg-chrono-border" />
+              <div className="mt-3 h-4 w-full rounded bg-chrono-border" />
+              <div className="mt-1.5 h-4 w-3/4 rounded bg-chrono-border" />
 
-            <div className="mt-6">
-              <div className="h-3 w-28 rounded bg-chrono-border" />
-              <div className="mt-3 space-y-2">
-                {Array.from({ length: 3 }, (_, i) => (
-                  <div key={i} className="flex items-center gap-3 rounded-lg bg-chrono-bg/50 px-3 py-3">
-                    <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-chrono-border" />
-                    <div className="flex-1 space-y-1.5">
-                      <div className="h-3.5 w-1/3 rounded bg-chrono-border" />
-                      <div className="h-3 w-2/3 rounded bg-chrono-border" />
+              <div className="mt-6">
+                <div className="h-3 w-28 rounded bg-chrono-border" />
+                <div className="mt-3 space-y-2">
+                  {Array.from({ length: 3 }, (_, i) => (
+                    <div key={i} className="flex items-center gap-3 rounded-lg bg-chrono-bg/50 px-3 py-3">
+                      <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-chrono-border" />
+                      <div className="flex-1 space-y-1.5">
+                        <div className="h-3.5 w-1/3 rounded bg-chrono-border" />
+                        <div className="h-3 w-2/3 rounded bg-chrono-border" />
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
 
-            <div className="mt-5 flex gap-2">
-              <div className="h-4 w-20 rounded bg-chrono-border" />
-              <div className="h-4 w-16 rounded bg-chrono-border" />
-              <div className="h-4 w-16 rounded bg-chrono-border" />
-            </div>
+              <div className="mt-5 flex gap-2">
+                <div className="h-4 w-20 rounded bg-chrono-border" />
+                <div className="h-4 w-16 rounded bg-chrono-border" />
+                <div className="h-4 w-16 rounded bg-chrono-border" />
+              </div>
 
-            <div className="mt-6 flex gap-3">
-              <div className="h-12 flex-1 rounded-lg bg-chrono-border" />
-              <div className="h-12 w-24 rounded-lg bg-chrono-border" />
+              <div className="mt-6 flex gap-3">
+                <div className="h-12 flex-1 rounded-lg bg-chrono-border" />
+                <div className="h-12 w-24 rounded-lg bg-chrono-border" />
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {phase === "error" && (
-        <div className="flex min-h-[calc(100vh-3.5rem)] flex-col items-center justify-center gap-4">
-          <p className="text-sm text-red-400">{error}</p>
-          <button
-            onClick={() => router.push("/app")}
-            className="cursor-pointer text-chrono-caption text-chrono-text-muted transition-colors hover:text-chrono-text-secondary"
-          >
-            {locale === "zh" ? "\u2190 返回首页" : "\u2190 Back to home"}
-          </button>
-        </div>
-      )}
+        {phase === "error" && (
+          <div className="flex min-h-[calc(100vh-3.5rem)] flex-col items-center justify-center gap-4">
+            <p className="text-sm text-red-400">{error}</p>
+            <button
+              onClick={() => router.push("/app")}
+              className="cursor-pointer text-chrono-caption text-chrono-text-muted transition-colors hover:text-chrono-text-secondary"
+            >
+              {locale === "zh" ? "\u2190 返回首页" : "\u2190 Back to home"}
+            </button>
+          </div>
+        )}
 
-      {phase === "similar" && similarTopic && (
-        <div className="animate-fade-in">
-          <SimilarTopicCard
-            originalTopic={searchParams.get("topic") ?? ""}
-            similarTopic={similarTopic.topic}
-            onViewExisting={handleViewSimilar}
-            onNewResearch={handleForceNewResearch}
-            isLoading={isNavigating}
-            locale={locale}
-          />
-        </div>
-      )}
+        {phase === "similar" && similarTopic && (
+          <div className="animate-fade-in">
+            <SimilarTopicCard
+              originalTopic={searchParams.get("topic") ?? ""}
+              similarTopic={similarTopic.topic}
+              onViewExisting={handleViewSimilar}
+              onNewResearch={handleForceNewResearch}
+              isLoading={isNavigating}
+              locale={locale}
+            />
+          </div>
+        )}
 
-      {phase === "proposal" && proposal && (
-        <div className="animate-fade-in">
-          <ProposalCard
-            proposal={proposal}
-            onConfirm={handleConfirm}
-            onCancel={handleCancel}
-            locale={locale}
-          />
-        </div>
-      )}
+        {phase === "proposal" && proposal && (
+          <div className="animate-fade-in">
+            <ProposalCard
+              proposal={proposal}
+              onConfirm={handleConfirm}
+              onCancel={handleCancel}
+              locale={locale}
+            />
+          </div>
+        )}
+      </AppShell>
+    );
+  }
 
-      {phase === "research" && (
-        <div className="animate-fade-in">
-          <Timeline
-            nodes={nodes}
-            progressMessage={progressMessage}
-            synthesisData={synthesisData}
-            completeData={completeData}
-            proposal={proposal}
-            language={language}
-            selectedNodeId={selectedNodeId}
-            highlightedNodeId={highlightedNodeId}
-            onSelectNode={setSelectedNodeId}
-            connectionMap={connectionMap}
-            phaseGroups={phaseGroups}
-            researchPhase={researchPhase}
-            researchModel={researchModel}
-            researchStartTime={researchStartTime}
-            nodeProgressMap={nodeProgressMap}
-          />
-        </div>
-      )}
-
-      {phase === "research" && nodes.length >= 15 && (
-        <MiniMap
-          nodes={nodes}
-          connections={synthesisData?.connections ?? []}
-          selectedId={selectedNodeId}
-          hoveredId={miniMapHoveredId}
-          onHover={setMiniMapHoveredId}
-          onJumpTo={handleNavigateToNode}
-          scrollTop={scrollTop}
-          scrollHeight={scrollHeight}
-          viewportHeight={viewportHeight}
-        />
-      )}
-
-      <DetailPanel
-        node={selectedNode}
-        language={language}
-        connectionMap={connectionMap}
-        onClose={() => setSelectedNodeId(null)}
-        onNavigateToNode={handleNavigateToNode}
+  // --- Research phase: three-column layout with TopBar (no AppShell) ---
+  return (
+    <div className="min-h-screen bg-chrono-bg text-chrono-text">
+      <TopBar
+        topic={proposal?.topic ?? ""}
+        nodeCount={nodes.length}
+        onBack={handleNewResearch}
       />
-    </AppShell>
+
+      <main className="mx-auto max-w-[1440px] px-6 pt-6 pb-16">
+        <div className="flex gap-6">
+          {/* LEFT: MiniMap */}
+          {nodes.length >= 10 && (
+            <MiniMap
+              nodes={nodes}
+              connections={connections}
+              selectedId={selectedNodeId}
+              hoveredId={hoveredId}
+              onHover={setHoveredId}
+              onJumpTo={handleNavigateToNode}
+              scrollTop={scrollState.scrollTop}
+              scrollHeight={scrollState.scrollHeight}
+              viewportHeight={scrollState.viewportHeight}
+            />
+          )}
+
+          {/* CENTER: Timeline */}
+          <div className="min-w-0 flex-1">
+            {!completeData && researchPhase && (
+              <ProgressBar
+                phase={researchPhase}
+                elapsed={elapsed}
+                done={nodes.filter((n) => n.status === "complete").length}
+                total={nodes.length}
+                model={researchModel}
+              />
+            )}
+            {completeData && (
+              <>
+                <CompletionBanner
+                  nodeCount={completeData.total_nodes}
+                  timeStr={completionTimeStr}
+                />
+                {synthesisData && (
+                  <SynthesisBanner
+                    synthesisData={synthesisData}
+                    nodeCount={nodes.length}
+                    timelineSpan={synthesisData.timeline_span}
+                  />
+                )}
+              </>
+            )}
+
+            <Timeline
+              nodes={nodes}
+              connections={connections}
+              selectedId={selectedNodeId}
+              hoveredId={hoveredId}
+              onSelect={(id) =>
+                setSelectedNodeId(id === selectedNodeId ? null : id)
+              }
+              onHover={setHoveredId}
+            />
+
+            {/* Skeleton placeholders while researching */}
+            {!completeData &&
+              nodes.length > 0 &&
+              nodes.length <
+                (proposal?.complexity?.estimated_total_nodes ?? 30) && (
+                <>
+                  {[0, 1, 2].map((i) => (
+                    <SkeletonNode
+                      key={i}
+                      side={
+                        (nodes.length + i) % 2 === 0 ? "right" : "left"
+                      }
+                    />
+                  ))}
+                </>
+              )}
+          </div>
+
+          {/* RIGHT: DetailPanel */}
+          {selectedNodeId && (
+            <DetailPanel
+              node={nodes.find((n) => n.id === selectedNodeId) ?? null}
+              language={language}
+              connectionMap={connectionMap}
+              onClose={() => setSelectedNodeId(null)}
+              onNavigateToNode={handleNavigateToNode}
+            />
+          )}
+        </div>
+      </main>
+    </div>
   );
 }
