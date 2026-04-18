@@ -522,6 +522,7 @@ export function SessionView({ sessionId }: Props) {
         topic={proposal?.topic ?? ""}
         nodeCount={nodes.length}
         onBack={handleNewResearch}
+        language={language}
       />
 
       <main className="mx-auto max-w-[1440px] px-6 pt-6 pb-16">
@@ -538,6 +539,7 @@ export function SessionView({ sessionId }: Props) {
               scrollTop={scrollState.scrollTop}
               scrollHeight={scrollState.scrollHeight}
               viewportHeight={scrollState.viewportHeight}
+              language={language}
             />
           )}
 
@@ -550,6 +552,7 @@ export function SessionView({ sessionId }: Props) {
                 done={nodes.filter((n) => n.status === "complete").length}
                 total={nodes.length}
                 model={researchModel}
+                language={language}
               />
             )}
             {completeData && (
@@ -557,12 +560,14 @@ export function SessionView({ sessionId }: Props) {
                 <CompletionBanner
                   nodeCount={completeData.total_nodes}
                   timeStr={completionTimeStr}
+                  language={language}
                 />
                 {synthesisData && (
                   <SynthesisBanner
                     synthesisData={synthesisData}
                     nodeCount={nodes.length}
                     timelineSpan={synthesisData.timeline_span}
+                    language={language}
                   />
                 )}
               </>

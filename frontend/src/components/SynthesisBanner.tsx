@@ -8,13 +8,16 @@ interface SynthesisBannerProps {
   synthesisData: SynthesisData;
   nodeCount: number;
   timelineSpan: string;
+  language: string;
 }
 
 export default function SynthesisBanner({
   synthesisData,
   nodeCount,
   timelineSpan,
+  language,
 }: SynthesisBannerProps) {
+  const isZh = language.startsWith("zh");
   const [expanded, setExpanded] = useState(true);
 
   const headline =
@@ -33,7 +36,7 @@ export default function SynthesisBanner({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-chrono-tiny uppercase tracking-[0.12em] text-chrono-accent/80 font-medium">
-            <span>Synthesis</span>
+            <span>{isZh ? "调研总结" : "Synthesis"}</span>
             <span className="text-chrono-text-muted/60 normal-case tracking-normal">deepseek</span>
           </div>
           <p className="mt-1 text-chrono-caption text-chrono-text font-medium">{headline}</p>
@@ -51,7 +54,7 @@ export default function SynthesisBanner({
           </p>
           <div className="mt-4 rounded-lg border-l-2 border-chrono-accent/60 bg-chrono-accent/[0.04] px-4 py-2.5">
             <div className="text-chrono-tiny uppercase tracking-wider text-chrono-accent/70 font-medium mb-1">
-              Key insight
+              {isZh ? "核心洞察" : "Key insight"}
             </div>
             <p className="text-chrono-caption text-chrono-text leading-relaxed italic">
               {synthesisData.key_insight}
@@ -59,17 +62,17 @@ export default function SynthesisBanner({
           </div>
           <div className="mt-4 flex flex-wrap gap-1.5">
             <span className="inline-flex items-center gap-1 rounded-full bg-chrono-bg/60 border border-chrono-border/40 px-2.5 py-0.5 text-chrono-tiny text-chrono-text-muted">
-              <span className="text-chrono-text font-mono tabular-nums">{nodeCount}</span> nodes
+              <span className="text-chrono-text font-mono tabular-nums">{nodeCount}</span> {isZh ? "节点" : "nodes"}
             </span>
             <span className="inline-flex items-center gap-1 rounded-full bg-chrono-bg/60 border border-chrono-border/40 px-2.5 py-0.5 text-chrono-tiny text-chrono-text-muted">
               <span className="text-chrono-text font-mono tabular-nums">
                 {synthesisData.source_count}
               </span>{" "}
-              sources
+              {isZh ? "来源" : "sources"}
             </span>
             <span className="inline-flex items-center gap-1 rounded-full bg-chrono-bg/60 border border-chrono-border/40 px-2.5 py-0.5 text-chrono-tiny text-chrono-text-muted">
               <span className="text-chrono-text font-mono tabular-nums">{connectionCount}</span>{" "}
-              connections
+              {isZh ? "关联" : "connections"}
             </span>
             <span className="inline-flex items-center gap-1 rounded-full bg-chrono-bg/60 border border-chrono-border/40 px-2.5 py-0.5 text-chrono-tiny text-chrono-text-muted">
               <span className="text-chrono-text font-mono tabular-nums">{timelineSpan}</span>

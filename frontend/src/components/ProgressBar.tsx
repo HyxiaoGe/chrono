@@ -8,23 +8,25 @@ interface ProgressBarProps {
   done: number;
   total: number;
   model: string;
+  language: string;
 }
 
 const phases = [
-  { key: "skeleton", label: "Skeleton" },
-  { key: "detail", label: "Detail" },
-  { key: "analysis", label: "Analysis" },
-  { key: "synthesis", label: "Synthesis" },
+  { key: "skeleton", en: "Skeleton", zh: "构建骨架" },
+  { key: "detail", en: "Detail", zh: "补充详情" },
+  { key: "analysis", en: "Analysis", zh: "完整性分析" },
+  { key: "synthesis", en: "Synthesis", zh: "生成总结" },
 ];
 
-function getStatusText(phase: string, done: number, total: number): string {
-  if (phase === "detail") return `enriching ${done}/${total} nodes…`;
-  if (phase === "skeleton") return "generating timeline structure…";
-  if (phase === "analysis") return "analyzing causal connections…";
-  return "synthesizing insights…";
+function getStatusText(phase: string, done: number, total: number, isZh: boolean): string {
+  if (phase === "detail") return isZh ? `补充详情 ${done}/${total}…` : `enriching ${done}/${total} nodes…`;
+  if (phase === "skeleton") return isZh ? "正在生成时间线骨架…" : "generating timeline structure…";
+  if (phase === "analysis") return isZh ? "正在分析因果关联…" : "analyzing causal connections…";
+  return isZh ? "正在生成总结…" : "synthesizing insights…";
 }
 
-export default function ProgressBar({ phase, elapsed, done, total, model }: ProgressBarProps) {
+export default function ProgressBar({ phase, elapsed, done, total, model, language }: ProgressBarProps) {
+  const isZh = language.startsWith("zh");
   const idx = phases.findIndex((p) => p.key === phase);
   const pct = Math.min(
     100,
@@ -66,7 +68,7 @@ export default function ProgressBar({ phase, elapsed, done, total, model }: Prog
                         : "text-chrono-text-muted/50"
                     }
                   >
-                    {p.label}
+                    {isZh ? p.zh : p.en}
                     {active && (
                       <span className="ml-1 text-chrono-text-muted normal-case italic font-normal">
                         …
@@ -85,7 +87,7 @@ export default function ProgressBar({ phase, elapsed, done, total, model }: Prog
           <span className="rounded bg-chrono-accent/10 border border-chrono-accent/20 px-1.5 py-0.5 text-chrono-accent/80 font-mono">
             {model}
           </span>
-          <span>{getStatusText(phase, done, total)}</span>
+          <span>{getStatusText(phase, done, total, isZh)}</span>
         </div>
       </div>
       <div className="h-0.5 w-full bg-chrono-border/30 overflow-hidden">
