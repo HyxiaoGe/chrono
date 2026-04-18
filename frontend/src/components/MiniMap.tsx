@@ -14,6 +14,7 @@ interface MiniMapProps {
   scrollTop: number;
   scrollHeight: number;
   viewportHeight: number;
+  language: string;
 }
 
 export function MiniMap({
@@ -26,7 +27,9 @@ export function MiniMap({
   scrollTop,
   scrollHeight,
   viewportHeight,
+  language,
 }: MiniMapProps) {
+  const isZh = language.startsWith("zh");
   const mapRef = useRef<HTMLDivElement>(null);
   const height = 560;
 
@@ -49,7 +52,7 @@ export function MiniMap({
     <div className="sticky top-20 w-[72px] shrink-0">
       {/* Header */}
       <div className="mb-3 flex items-center gap-1.5 px-2">
-        <span className="text-chrono-tiny uppercase tracking-wider text-chrono-text-muted font-medium">Map</span>
+        <span className="text-chrono-tiny uppercase tracking-wider text-chrono-text-muted font-medium">{isZh ? "导航" : "Map"}</span>
         <span className="text-chrono-tiny text-chrono-text-muted/60 font-mono tabular-nums">{nodes.length}</span>
       </div>
 
@@ -167,15 +170,15 @@ export function MiniMap({
       <div className="mt-3 space-y-1.5 px-2">
         <div className="flex items-center gap-1.5">
           <span className="h-[7px] w-[7px] rounded-full bg-chrono-revolutionary shadow-[0_0_4px_0_#f0c06080]" />
-          <span className="text-chrono-tiny text-chrono-text-muted">Revolutionary</span>
+          <span className="text-chrono-tiny text-chrono-text-muted">{isZh ? "突破" : "Revolutionary"}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="h-[5px] w-[5px] rounded-full bg-chrono-high" />
-          <span className="text-chrono-tiny text-chrono-text-muted">High</span>
+          <span className="text-chrono-tiny text-chrono-text-muted">{isZh ? "重要" : "High"}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="h-[3.5px] w-[3.5px] rounded-full bg-chrono-medium" />
-          <span className="text-chrono-tiny text-chrono-text-muted">Medium</span>
+          <span className="text-chrono-tiny text-chrono-text-muted">{isZh ? "一般" : "Medium"}</span>
         </div>
       </div>
     </div>

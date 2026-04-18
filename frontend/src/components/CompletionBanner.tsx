@@ -3,9 +3,11 @@
 interface CompletionBannerProps {
   nodeCount: number;
   timeStr: string;
+  language: string;
 }
 
-export default function CompletionBanner({ nodeCount, timeStr }: CompletionBannerProps) {
+export default function CompletionBanner({ nodeCount, timeStr, language }: CompletionBannerProps) {
+  const isZh = language.startsWith("zh");
   return (
     <div className="mb-6 flex items-center gap-3 rounded-lg border border-chrono-inspired/30 bg-chrono-inspired/[0.05] px-4 py-2.5">
       <span className="flex h-5 w-5 items-center justify-center rounded-full bg-chrono-inspired/20 text-chrono-inspired">
@@ -23,8 +25,8 @@ export default function CompletionBanner({ nodeCount, timeStr }: CompletionBanne
         </svg>
       </span>
       <span className="text-chrono-caption text-chrono-text-secondary">
-        Research complete ·{" "}
-        <span className="text-chrono-text font-mono tabular-nums">{nodeCount}</span> nodes ·{" "}
+        {isZh ? "调研完成" : "Research complete"} ·{" "}
+        <span className="text-chrono-text font-mono tabular-nums">{nodeCount}</span> {isZh ? "个节点" : "nodes"} ·{" "}
         <span className="text-chrono-text font-mono tabular-nums">{timeStr}</span>
       </span>
     </div>
