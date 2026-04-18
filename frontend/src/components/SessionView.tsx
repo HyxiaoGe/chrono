@@ -78,6 +78,10 @@ export function SessionView({ sessionId }: Props) {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [miniMapHoveredId, setMiniMapHoveredId] = useState<string | null>(null);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [scrollHeight, setScrollHeight] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState(0);
 
   const [researchPhase, setResearchPhase] = useState<string>("");
   const [researchModel, setResearchModel] = useState<string>("");
@@ -165,6 +169,22 @@ export function SessionView({ sessionId }: Props) {
         setError("Session not found or expired.");
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Track scroll position for MiniMap viewport indicator
+  useEffect(() => {
+    function updateScroll() {
+      setScrollTop(window.scrollY);
+      setScrollHeight(document.documentElement.scrollHeight);
+      setViewportHeight(window.innerHeight);
+    }
+    updateScroll();
+    window.addEventListener("scroll", updateScroll, { passive: true });
+    window.addEventListener("resize", updateScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", updateScroll);
+      window.removeEventListener("resize", updateScroll);
+    };
   }, []);
 
   function handleConfirm() {
@@ -490,8 +510,14 @@ export function SessionView({ sessionId }: Props) {
       {phase === "research" && nodes.length >= 15 && (
         <MiniMap
           nodes={nodes}
-          activeNodeId={activeNodeId}
-          onNavigateToNode={handleNavigateToNode}
+          connections={synthesisData?.connections ?? []}
+          selectedId={selectedNodeId}
+          hoveredId={miniMapHoveredId}
+          onHover={setMiniMapHoveredId}
+          onJumpTo={handleNavigateToNode}
+          scrollTop={scrollTop}
+          scrollHeight={scrollHeight}
+          viewportHeight={viewportHeight}
         />
       )}
 
