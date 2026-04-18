@@ -5,7 +5,7 @@ import { demoData } from "@/data/demo";
 import type { DemoData } from "@/data/demo";
 import type { Locale } from "@/data/landing";
 import { messages } from "@/data/landing";
-import { TimelineNodeCard } from "./TimelineNode";
+import NodeCard from "./NodeCard";
 import type { TimelineNode } from "@/types";
 
 // --- State machine ---
@@ -275,14 +275,14 @@ function DemoTimeline({
                 <span className={`rounded-full ${dotSize} ${dotColor}`} />
               </div>
               <div className="flex-1 min-w-0">
-                <TimelineNodeCard
+                <NodeCard
                   node={node}
                   isSelected={false}
-                  isHighlighted={false}
-                  isDimmed={false}
-                  connectionCount={0}
-                  onSelect={() => {}}
-                  language={locale === "zh" ? "zh" : "en"}
+                  isRelated={false}
+                  dimmed={false}
+                  onClick={() => {}}
+                  onHover={() => {}}
+                  side="left"
                 />
               </div>
             </div>
