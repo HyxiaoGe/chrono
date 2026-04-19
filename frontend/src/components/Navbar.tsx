@@ -57,7 +57,49 @@ export function Navbar({
   onBack,
 }: Props) {
   const t = messages[locale].nav;
+  const isZh = locale === "zh";
 
+  // Landing mode — full prototype-faithful navbar
+  if (mode === "landing") {
+    return (
+      <nav className="sticky top-0 z-50 h-14 flex items-center px-8 bg-chrono-bg/80 backdrop-blur-md border-b border-chrono-border/30">
+        <Link href="/" className="flex items-center gap-1.5 text-chrono-accent">
+          <LogoMark />
+          <span className="text-chrono-body font-bold tracking-wide">Chrono</span>
+        </Link>
+        <span className="ml-3 rounded-full border border-chrono-border/50 px-2 py-0.5 text-[10px] tracking-wider uppercase text-chrono-text-muted">
+          Beta
+        </span>
+
+        <div className="ml-10 hidden md:flex items-center gap-7 text-chrono-caption text-chrono-text-muted">
+          <a href="#how" className="hover:text-chrono-text-secondary transition-colors">
+            {isZh ? "工作原理" : "How it works"}
+          </a>
+          <a href="#explore" className="hover:text-chrono-text-secondary transition-colors">
+            {isZh ? "探索" : "Explore"}
+          </a>
+          <a href="#recent" className="hover:text-chrono-text-secondary transition-colors">
+            {isZh ? "画廊" : "Gallery"}
+          </a>
+        </div>
+
+        <div className="ml-auto flex items-center gap-2">
+          <LanguageToggle locale={locale} onToggleLocale={onToggleLocale} />
+          <span className="hidden sm:inline text-chrono-caption text-chrono-text-muted hover:text-chrono-text-secondary px-2 py-1 transition-colors cursor-pointer">
+            {isZh ? "登录" : "Sign in"}
+          </span>
+          <Link
+            href="/app"
+            className="rounded-md bg-chrono-accent px-3 py-1.5 text-chrono-caption font-medium text-chrono-bg hover:bg-chrono-accent/90 transition-colors"
+          >
+            {isZh ? "试用 Chrono →" : "Try Chrono →"}
+          </Link>
+        </div>
+      </nav>
+    );
+  }
+
+  // Search / Session modes — existing navbar
   return (
     <nav className="sticky top-0 z-50 h-14 flex items-center px-6 bg-chrono-bg/80 backdrop-blur-md border-b border-chrono-border/30">
       {/* Left */}
@@ -66,7 +108,7 @@ export function Navbar({
           <button
             onClick={onBack}
             className="text-chrono-text-muted hover:text-chrono-text-secondary transition-colors cursor-pointer mr-1"
-            title={locale === "zh" ? "\u8fd4\u56de" : "Back"}
+            title={isZh ? "\u8fd4\u56de" : "Back"}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -99,15 +141,6 @@ export function Navbar({
           <div className="hidden sm:flex items-center gap-2 text-chrono-tiny text-chrono-text-muted">
             <span>{activePhase}</span>
           </div>
-        )}
-
-        {mode === "landing" && (
-          <Link
-            href="/app"
-            className="min-w-[5.5rem] text-center rounded-md bg-chrono-accent/10 border border-chrono-accent/30 px-3 py-1 text-chrono-caption text-chrono-accent hover:bg-chrono-accent/20 transition-colors"
-          >
-            {t.getStarted}
-          </Link>
         )}
 
         <LanguageToggle locale={locale} onToggleLocale={onToggleLocale} />
