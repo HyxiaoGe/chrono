@@ -454,8 +454,12 @@ function MiniDetailPanel({ openAmt, t, node, detail }: {
         </div>
       </div>
 
-      {/* Body */}
-      <div className="px-3 py-3 overflow-y-auto" style={{ opacity: reveal, maxHeight: "calc(100% - 44px)" }}>
+      {/* Body — auto-scrolls content while panel is open */}
+      <div className="px-3 py-3 overflow-hidden" style={{ opacity: reveal, maxHeight: "calc(100% - 44px)" }}>
+      <div style={{
+        transform: `translateY(${t > 12.0 && t < 16.5 ? -Math.min(280, (t - 12.0) * 65) : 0}px)`,
+        transition: "transform 200ms linear",
+      }}>
         <h2 className="text-[13px] font-semibold text-chrono-revolutionary leading-tight">{node.title}</h2>
         {node.subtitle && <p className="mt-0.5 text-[10px] text-chrono-text-secondary">{node.subtitle}</p>}
         {node.tags && (
@@ -548,6 +552,7 @@ function MiniDetailPanel({ openAmt, t, node, detail }: {
           </ul>
         </div>
       </div>
+      </div>
     </div>
   );
 }
@@ -597,11 +602,9 @@ function TimelineTheater({ locale }: { locale: Locale }) {
     let latestIdx = 0;
     THEATER_NODES.forEach((n, i) => { if (t >= n.enrich - 0.3) latestIdx = i; });
     scrollY = Math.max(0, Math.min(TOTAL_TL_H - VIEWPORT_H, nodePos[latestIdx].y - VIEWPORT_H * 0.55));
-  } else if (t < 17.0) {
+  } else {
     const selIdx = THEATER_NODES.findIndex((n) => n.id === SELECTED_ID);
     scrollY = Math.max(0, Math.min(TOTAL_TL_H - VIEWPORT_H, nodePos[selIdx].y - VIEWPORT_H * 0.3));
-  } else {
-    scrollY = TOTAL_TL_H - VIEWPORT_H;
   }
 
   const scrollProgress = TOTAL_TL_H > VIEWPORT_H ? scrollY / (TOTAL_TL_H - VIEWPORT_H) : 0;
@@ -611,9 +614,6 @@ function TimelineTheater({ locale }: { locale: Locale }) {
 
   // Connection arcs
   const connStates = THEATER_CONNS.map((c) => ({ ...c, draw: clamp01((t - c.startAt) / 0.7) }));
-
-  // Synthesis
-  const synthOpacity = clamp01((t - 13.5) / 0.7);
 
   // Agent ticker
   const agents = ["Orchestrator", "Milestone", "Detail", "Gap", "Connector", "Synthesizer"];
@@ -745,16 +745,6 @@ function TimelineTheater({ locale }: { locale: Locale }) {
                 );
               })}
 
-              {/* Synthesis block */}
-              <div className="absolute left-3 right-3 rounded-lg border border-chrono-border bg-chrono-surface/50 px-3 py-2" style={{ top: TOTAL_TL_H - 60, opacity: synthOpacity }}>
-                <div className="text-[9px] uppercase tracking-wider text-chrono-text-muted mb-0.5">Research Summary</div>
-                <p className="text-[10.5px] leading-snug text-chrono-text">The iPhone transformed from a revolutionary device into a platform that redefined mobile computing.</p>
-                <div className="mt-1.5 flex flex-wrap gap-1">
-                  <span className="rounded-full bg-chrono-bg/60 border border-chrono-border/40 px-1.5 py-0.5 text-[9px] text-chrono-text-muted"><span className="text-chrono-text">{THEATER_NODES.length}</span> nodes</span>
-                  <span className="rounded-full bg-chrono-bg/60 border border-chrono-border/40 px-1.5 py-0.5 text-[9px] text-chrono-text-muted"><span className="text-chrono-text">{THEATER_CONNS.length}</span> connections</span>
-                  <span className="rounded-full bg-chrono-bg/60 border border-chrono-border/40 px-1.5 py-0.5 text-[9px] text-chrono-text-muted"><span className="text-chrono-text">48</span> sources</span>
-                </div>
-              </div>
             </div>
 
             {/* Edge fades */}
