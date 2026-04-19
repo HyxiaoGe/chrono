@@ -16,13 +16,13 @@ const LABELS: Record<string, Record<string, string>> = {
   key_features: { zh: "关键特性", en: "Key Features" },
   impact: { zh: "影响", en: "Impact" },
   key_people: { zh: "关键人物", en: "Key People" },
-  context: { zh: "背景", en: "Context" },
   sources: { zh: "来源", en: "Sources" },
-  connections: { zh: "因果关联", en: "Related Nodes" },
-  key_stats: { zh: "关键数据", en: "Key Stats" },
+  connected: { zh: "关联节点", en: "Connected Moments" },
+  key_stats: { zh: "关键数据", en: "By the Numbers" },
   description: { zh: "概述", en: "Overview" },
-  notable_quote: { zh: "引言", en: "Quote" },
   tags: { zh: "标签", en: "Tags" },
+  led_to: { zh: "导致", en: "Led to" },
+  shaped_by: { zh: "受影响于", en: "Shaped by" },
   // significance
   revolutionary: { zh: "突破", en: "revolutionary" },
   high: { zh: "重要", en: "high" },
@@ -37,37 +37,93 @@ const LABELS: Record<string, Record<string, string>> = {
 function label(key: string, language: string): string {
   const entry = LABELS[key];
   if (!entry) return key;
-  if (language.startsWith("zh")) return entry.zh;
-  return entry.en;
+  return language.startsWith("zh") ? entry.zh : entry.en;
 }
 
 /* ------------------------------------------------------------------ */
-/*  Section helper                                                     */
+/*  Atomic components                                                  */
 /* ------------------------------------------------------------------ */
 
-function Section({
+function SectionHeader({
   title,
-  kicker,
-  children,
+  count,
+  accent,
 }: {
   title: string;
-  kicker?: string;
-  children: React.ReactNode;
+  count?: number;
+  accent?: boolean;
 }) {
   return (
-    <section>
-      <div className="mb-2.5 flex items-center gap-2">
-        <h4 className="text-chrono-tiny font-medium uppercase tracking-[0.12em] text-chrono-text-muted">
-          {title}
-        </h4>
-        {kicker && (
-          <span className="text-chrono-tiny text-chrono-text-muted/60 font-mono tabular-nums">
-            {kicker}
+    <div className="mb-3 flex items-baseline justify-between gap-2">
+      <h4
+        className={`text-chrono-tiny font-semibold uppercase tracking-[0.14em] ${
+          accent ? "text-chrono-accent/90" : "text-chrono-text-secondary"
+        }`}
+      >
+        {title}
+      </h4>
+      {typeof count !== "undefined" && (
+        <span className="text-chrono-tiny font-mono tabular-nums text-chrono-text-muted">
+          {count}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function Divider() {
+  return <div className="h-px bg-chrono-border/30" />;
+}
+
+function RelatedRow({
+  nodeTitle,
+  nodeDate,
+  type,
+  direction,
+  language,
+  onSelect,
+}: {
+  nodeTitle: string;
+  nodeDate: string;
+  type: string;
+  direction: "out" | "in";
+  language: string;
+  onSelect: () => void;
+}) {
+  const c = connColor(type);
+  const arrow = direction === "out" ? "→" : "←";
+  return (
+    <button
+      onClick={onSelect}
+      className="group w-full rounded-lg border border-chrono-border/40 bg-chrono-surface/40 hover:bg-chrono-surface-hover hover:border-chrono-border-active transition-colors text-left"
+    >
+      <div className="flex items-center gap-3 px-3 py-2.5">
+        <div
+          className="shrink-0 flex items-center gap-1 rounded-md px-1.5 py-0.5"
+          style={{ backgroundColor: `${c}18`, color: c }}
+        >
+          <span className="text-[11px] leading-none font-mono font-semibold">{arrow}</span>
+          <span className="text-[10px] uppercase tracking-wider font-medium">
+            {label(type, language)}
           </span>
-        )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-chrono-caption text-chrono-text font-medium truncate">
+            {nodeTitle}
+          </div>
+          {nodeDate && (
+            <div className="mt-0.5 text-[10px] font-mono tabular-nums text-chrono-text-muted">
+              {nodeDate.slice(0, 7)}
+            </div>
+          )}
+        </div>
+        <Icon
+          name="chevronRight"
+          size={12}
+          className="shrink-0 text-chrono-text-muted/50 group-hover:text-chrono-text-muted group-hover:translate-x-0.5 transition-all"
+        />
       </div>
-      {children}
-    </section>
+    </button>
   );
 }
 
@@ -102,62 +158,57 @@ export function DetailPanel({
     sig === "revolutionary" ? "revolutionary" : sig === "high" ? "high" : "mediumSig";
   const color = sigColor(sig);
 
-  // Build related-nodes list from connectionMap
+  // Build related-nodes list, split by direction
   const connInfo = connectionMap.get(node.id);
-  const related: {
-    nodeId: string;
-    nodeTitle: string;
-    nodeDate: string;
-    type: string;
-    direction: "out" | "in";
-  }[] = [];
+  const outgoing: { nodeId: string; nodeTitle: string; nodeDate: string; type: string }[] = [];
+  const incoming: { nodeId: string; nodeTitle: string; nodeDate: string; type: string }[] = [];
   if (connInfo) {
     for (const c of connInfo.outgoing) {
-      related.push({
+      outgoing.push({
         nodeId: c.targetId,
         nodeTitle: c.targetTitle,
         nodeDate: "",
         type: c.type,
-        direction: "out",
       });
     }
     for (const c of connInfo.incoming) {
-      related.push({
+      incoming.push({
         nodeId: c.sourceId,
         nodeTitle: c.sourceTitle,
         nodeDate: "",
         type: c.type,
-        direction: "in",
       });
     }
   }
+  const hasRelated = outgoing.length > 0 || incoming.length > 0;
 
   return (
     <aside className="sticky top-20 w-[380px] shrink-0 self-start h-[calc(100vh-6rem)]">
       <div className="relative h-full flex flex-col rounded-xl border border-chrono-border/50 bg-chrono-surface/60 backdrop-blur-md overflow-hidden">
-        {/* ---- Header ---- */}
+        {/* ---- HEADER ---- */}
         <div
-          className="shrink-0 border-b border-chrono-border/40 px-5 py-4"
+          className="shrink-0 border-b border-chrono-border/40 px-5 pt-4 pb-4 relative"
           style={{
-            background: `linear-gradient(180deg, ${color}08 0%, transparent 100%)`,
+            background: `linear-gradient(180deg, ${color}12 0%, transparent 100%)`,
           }}
         >
+          {/* Significance accent bar */}
+          <div
+            className="absolute left-0 top-0 bottom-0 w-[3px]"
+            style={{ backgroundColor: color, opacity: sig === "revolutionary" ? 0.9 : 0.5 }}
+          />
+
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-2.5">
                 <span className="text-chrono-tiny font-mono text-chrono-text-muted tabular-nums">
                   {node.date}
                 </span>
+                <span className="text-chrono-border">·</span>
                 <Chip tone={sigTone}>{label(sig, language)}</Chip>
-                {details?.location && (
-                  <span className="inline-flex items-center gap-1 text-chrono-tiny text-chrono-text-muted">
-                    <Icon name="pin" size={11} />
-                    {details.location}
-                  </span>
-                )}
               </div>
               <h2
-                className={`text-chrono-title font-semibold leading-tight ${
+                className={`text-chrono-title font-semibold leading-[1.2] tracking-tight ${
                   sig === "revolutionary"
                     ? "text-chrono-revolutionary"
                     : "text-chrono-text"
@@ -166,9 +217,15 @@ export function DetailPanel({
                 {node.title}
               </h2>
               {node.subtitle && (
-                <p className="mt-1 text-chrono-caption text-chrono-text-secondary">
+                <p className="mt-1.5 text-chrono-caption text-chrono-text-secondary leading-snug">
                   {node.subtitle}
                 </p>
+              )}
+              {details?.location && (
+                <div className="mt-3 inline-flex items-center gap-1.5 text-chrono-tiny text-chrono-text-muted">
+                  <Icon name="pin" size={11} />
+                  {details.location}
+                </div>
               )}
             </div>
             <button
@@ -180,77 +237,114 @@ export function DetailPanel({
           </div>
         </div>
 
-        {/* ---- Scrollable body ---- */}
+        {/* ---- SCROLL BODY ---- */}
         <div className="flex-1 overflow-y-auto">
-          <div className="space-y-6 px-5 py-5">
-            {/* Description */}
+          {/* Description */}
+          <div className="px-5 pt-5 pb-6">
             <p className="text-chrono-body leading-relaxed text-chrono-text-secondary">
               {node.description}
             </p>
+          </div>
 
-            {/* Key stats (3-col grid) */}
-            {details?.key_stats && details.key_stats.length > 0 && (
-              <div className="grid grid-cols-3 gap-2">
-                {details.key_stats.map((stat, i) => (
-                  <div
-                    key={i}
-                    className="rounded-lg border border-chrono-border/40 bg-chrono-bg/50 px-3 py-2.5"
-                  >
-                    <div className="text-chrono-body font-semibold text-chrono-text">
-                      {stat}
+          {/* Key stats */}
+          {details?.key_stats && details.key_stats.length > 0 && (
+            <>
+              <Divider />
+              <div className="px-5 py-5">
+                <SectionHeader title={label("key_stats", language)} />
+                <div className="grid grid-cols-3 gap-2">
+                  {details.key_stats.map((stat, i) => (
+                    <div
+                      key={i}
+                      className="flex flex-col justify-between rounded-lg bg-chrono-bg/40 px-3 py-3 min-h-[64px]"
+                    >
+                      <div className="text-chrono-body font-semibold text-chrono-text font-mono tabular-nums">
+                        {stat}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            )}
+            </>
+          )}
 
-            {/* Notable quote */}
-            {details?.notable_quote && (
-              <blockquote className="relative rounded-lg border-l-2 border-chrono-accent/60 bg-chrono-accent/[0.04] pl-4 pr-3 py-3">
-                <p className="text-chrono-body italic text-chrono-text leading-relaxed">
-                  &ldquo;{details.notable_quote}&rdquo;
-                </p>
-                {details.key_people && details.key_people[0] && (
-                  <cite className="mt-1.5 block not-italic text-chrono-tiny text-chrono-text-muted">
-                    &mdash; {details.key_people[0].split(" — ")[0]}
-                  </cite>
-                )}
-              </blockquote>
-            )}
+          {/* Notable quote */}
+          {details?.notable_quote && (
+            <>
+              <Divider />
+              <div className="px-5 py-5">
+                <div className="relative">
+                  <span
+                    aria-hidden="true"
+                    className="absolute -top-2 -left-1 text-[44px] leading-none font-serif text-chrono-accent/30 select-none"
+                  >
+                    &ldquo;
+                  </span>
+                  <blockquote className="pl-6 pr-2">
+                    <p className="text-[15px] leading-[1.55] italic text-chrono-text">
+                      {details.notable_quote}
+                    </p>
+                    {details.key_people && details.key_people[0] && (
+                      <footer className="mt-3 flex items-center gap-2">
+                        <span className="h-px w-4 bg-chrono-accent/40" />
+                        <cite className="not-italic text-chrono-tiny text-chrono-text-muted">
+                          {details.key_people[0].split(" — ")[0]}
+                        </cite>
+                      </footer>
+                    )}
+                  </blockquote>
+                </div>
+              </div>
+            </>
+          )}
 
-            {/* Key features */}
-            {details?.key_features && details.key_features.length > 0 && (
-              <Section title={label("key_features", language)}>
-                <ul className="space-y-1.5">
+          {/* Key features */}
+          {details?.key_features && details.key_features.length > 0 && (
+            <>
+              <Divider />
+              <div className="px-5 py-5">
+                <SectionHeader title={label("key_features", language)} />
+                <ul className="space-y-2">
                   {details.key_features.map((f, i) => (
                     <li
                       key={i}
-                      className="flex gap-2.5 text-chrono-caption text-chrono-text-secondary leading-relaxed"
+                      className="flex gap-3 text-chrono-caption text-chrono-text-secondary leading-relaxed"
                     >
                       <span
-                        className="mt-1.5 h-1 w-1 shrink-0 rounded-full"
+                        className="mt-[7px] h-1 w-1 shrink-0 rounded-full"
                         style={{ backgroundColor: color }}
                       />
-                      {f}
+                      <span>{f}</span>
                     </li>
                   ))}
                 </ul>
-              </Section>
-            )}
+              </div>
+            </>
+          )}
 
-            {/* Impact */}
-            {details?.impact && (
-              <Section title={label("impact", language)}>
+          {/* Impact */}
+          {details?.impact && (
+            <>
+              <Divider />
+              <div className="px-5 py-5">
+                <SectionHeader title={label("impact", language)} />
                 <p className="text-chrono-caption text-chrono-text-secondary leading-relaxed">
                   {details.impact}
                 </p>
-              </Section>
-            )}
+              </div>
+            </>
+          )}
 
-            {/* Key people */}
-            {details?.key_people && details.key_people.length > 0 && (
-              <Section title={label("key_people", language)}>
-                <ul className="space-y-2">
+          {/* Key people */}
+          {details?.key_people && details.key_people.length > 0 && (
+            <>
+              <Divider />
+              <div className="px-5 py-5">
+                <SectionHeader
+                  title={label("key_people", language)}
+                  count={details.key_people.length}
+                />
+                <ul className="space-y-2.5">
                   {details.key_people.map((p, i) => {
                     const parts = p.split(" — ");
                     const initials = parts[0]
@@ -259,31 +353,34 @@ export function DetailPanel({
                       .slice(0, 2)
                       .join("");
                     return (
-                      <li key={i} className="flex items-center gap-2.5">
-                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-chrono-border/50 bg-chrono-bg/60 text-chrono-tiny font-medium text-chrono-text-secondary font-mono">
+                      <li key={i} className="flex items-center gap-3">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-chrono-border/50 bg-chrono-bg/40 text-[10px] font-semibold text-chrono-text-secondary font-mono">
                           {initials}
                         </span>
-                        <span className="text-chrono-caption">
-                          <span className="font-medium text-chrono-text">
+                        <div className="min-w-0 flex-1">
+                          <div className="text-chrono-caption font-medium text-chrono-text truncate">
                             {parts[0]}
-                          </span>
+                          </div>
                           {parts[1] && (
-                            <span className="text-chrono-text-muted">
-                              {" "}
-                              &mdash; {parts[1]}
-                            </span>
+                            <div className="text-[11px] text-chrono-text-muted truncate">
+                              {parts[1]}
+                            </div>
                           )}
-                        </span>
+                        </div>
                       </li>
                     );
                   })}
                 </ul>
-              </Section>
-            )}
+              </div>
+            </>
+          )}
 
-            {/* Tags */}
-            {details?.tags && details.tags.length > 0 && (
-              <Section title={label("tags", language)}>
+          {/* Tags */}
+          {details?.tags && details.tags.length > 0 && (
+            <>
+              <Divider />
+              <div className="px-5 py-5">
+                <SectionHeader title={label("tags", language)} />
                 <div className="flex flex-wrap gap-1.5">
                   {details.tags.map((t) => (
                     <Chip key={t} tone="accent">
@@ -291,60 +388,99 @@ export function DetailPanel({
                     </Chip>
                   ))}
                 </div>
-              </Section>
-            )}
+              </div>
+            </>
+          )}
 
-            {/* Related nodes */}
-            {related.length > 0 && (
-              <Section
-                title={label("connections", language)}
-                kicker={`${related.length}`}
-              >
-                <ul className="space-y-1.5">
-                  {related.map((r, i) => (
-                    <li key={i}>
-                      <button
-                        onClick={() => onNavigateToNode(r.nodeId)}
-                        className="group flex w-full items-start gap-2.5 rounded-md border border-chrono-border/30 bg-chrono-bg/30 px-2.5 py-2 text-left hover:border-chrono-border/60 hover:bg-chrono-surface/50 transition-colors"
-                      >
-                        <span
-                          className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full"
-                          style={{ backgroundColor: connColor(r.type) }}
-                        />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 text-chrono-tiny">
-                            <span
-                              className="font-medium"
-                              style={{ color: connColor(r.type) }}
-                            >
-                              {r.direction === "out"
-                                ? label(r.type, language)
-                                : `\u2190 ${label(r.type, language)}`}
-                            </span>
-                          </div>
-                          <div className="text-chrono-caption text-chrono-text group-hover:text-chrono-text truncate">
-                            {r.nodeTitle}
-                          </div>
-                        </div>
-                        <Icon
-                          name="chevronRight"
-                          size={12}
-                          className="mt-1 text-chrono-text-muted opacity-0 group-hover:opacity-100 transition-opacity"
-                        />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </Section>
-            )}
+          {/* ---- CONNECTED MOMENTS — distinct navigational zone ---- */}
+          {hasRelated && (
+            <div className="mt-2 bg-chrono-bg/50 border-t-2 border-chrono-border/50">
+              <div className="px-5 py-5">
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="text-chrono-accent/80"
+                    >
+                      <circle cx="6" cy="6" r="2" />
+                      <circle cx="18" cy="18" r="2" />
+                      <path d="M8 8l8 8" />
+                    </svg>
+                    <h4 className="text-chrono-tiny font-semibold uppercase tracking-[0.14em] text-chrono-accent/90">
+                      {label("connected", language)}
+                    </h4>
+                  </div>
+                  <span className="inline-flex items-center rounded-full bg-chrono-accent/15 text-chrono-accent/90 px-1.5 py-0.5 text-[10px] font-mono tabular-nums font-medium">
+                    {outgoing.length + incoming.length}
+                  </span>
+                </div>
 
-            {/* Sources */}
-            {node.sources && node.sources.length > 0 && (
-              <Section
-                title={label("sources", language)}
-                kicker={`${node.sources.length}`}
-              >
-                <ul className="space-y-0.5">
+                {outgoing.length > 0 && (
+                  <div className="mb-3">
+                    <div className="mb-1.5 flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-chrono-text-muted">
+                      <span>{label("led_to", language)}</span>
+                      <span className="h-px flex-1 bg-chrono-border/30" />
+                      <span className="font-mono tabular-nums">{outgoing.length}</span>
+                    </div>
+                    <div className="space-y-1.5">
+                      {outgoing.map((r, i) => (
+                        <RelatedRow
+                          key={i}
+                          nodeTitle={r.nodeTitle}
+                          nodeDate={r.nodeDate}
+                          type={r.type}
+                          direction="out"
+                          language={language}
+                          onSelect={() => onNavigateToNode(r.nodeId)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {incoming.length > 0 && (
+                  <div>
+                    <div className="mb-1.5 flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-chrono-text-muted">
+                      <span>{label("shaped_by", language)}</span>
+                      <span className="h-px flex-1 bg-chrono-border/30" />
+                      <span className="font-mono tabular-nums">{incoming.length}</span>
+                    </div>
+                    <div className="space-y-1.5">
+                      {incoming.map((r, i) => (
+                        <RelatedRow
+                          key={i}
+                          nodeTitle={r.nodeTitle}
+                          nodeDate={r.nodeDate}
+                          type={r.type}
+                          direction="in"
+                          language={language}
+                          onSelect={() => onNavigateToNode(r.nodeId)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Sources */}
+          {node.sources && node.sources.length > 0 && (
+            <>
+              <Divider />
+              <div className="px-5 py-5">
+                <SectionHeader
+                  title={label("sources", language)}
+                  count={node.sources.length}
+                />
+                <ul className="space-y-0.5 -mx-2">
                   {node.sources.map((url, i) => {
                     let domain: string;
                     let rest: string;
@@ -364,9 +500,9 @@ export function DetailPanel({
                           href={url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="group flex items-center gap-2 rounded-md px-2 py-1.5 text-chrono-tiny hover:bg-chrono-surface/70 transition-colors"
+                          className="group flex items-center gap-2.5 rounded-md px-2 py-1.5 text-chrono-tiny hover:bg-chrono-surface/70 transition-colors"
                         >
-                          <span className="size-1.5 shrink-0 rounded-full bg-chrono-border" />
+                          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-chrono-border" />
                           <span className="min-w-0 flex-1 truncate">
                             <span className="text-chrono-text-secondary">
                               {domain}
@@ -383,16 +519,19 @@ export function DetailPanel({
                           <Icon
                             name="external"
                             size={11}
-                            className="text-chrono-text-muted opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="shrink-0 text-chrono-text-muted opacity-0 group-hover:opacity-100 transition-opacity"
                           />
                         </a>
                       </li>
                     );
                   })}
                 </ul>
-              </Section>
-            )}
-          </div>
+              </div>
+            </>
+          )}
+
+          {/* Bottom breathing room */}
+          <div className="h-4" />
         </div>
       </div>
     </aside>
