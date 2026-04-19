@@ -183,7 +183,13 @@ export function DetailPanel({
   const hasRelated = outgoing.length > 0 || incoming.length > 0;
 
   return (
-    <aside className="sticky top-[152px] w-[380px] shrink-0 self-start h-[calc(100vh-11rem)]">
+    <aside
+      className="sticky w-[380px] shrink-0 self-start"
+      style={{
+        top: "calc(var(--era-nav-bottom, 152px) + 8px)",
+        height: "calc(100vh - var(--era-nav-bottom, 152px) - 24px)",
+      }}
+    >
       <div className="relative h-full flex flex-col rounded-xl border border-chrono-border/50 bg-chrono-surface/60 backdrop-blur-md overflow-hidden">
         {/* ---- HEADER ---- */}
         <div

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useLayoutEffect } from "react";
 import type { TimelineNode } from "@/types";
 import { sigColor } from "@/utils/design";
 
@@ -104,6 +104,20 @@ export default function EraNavigator({
 }: EraNavigatorProps) {
   const isZh = language.startsWith("zh");
   const [hoverEra, setHoverEra] = useState<string | null>(null);
+  const navRef = useRef<HTMLElement>(null);
+
+  // Publish actual height as CSS variable so DetailPanel can align
+  useLayoutEffect(() => {
+    const measure = () => {
+      if (navRef.current) {
+        const h = navRef.current.offsetHeight;
+        document.documentElement.style.setProperty("--era-nav-bottom", `${56 + h}px`);
+      }
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [nodes.length]);
 
   const eraData = useMemo(() => buildEras(nodes), [nodes]);
   const totalWeight = eraData.reduce((s, e) => s + e.weight, 0);
@@ -135,6 +149,7 @@ export default function EraNavigator({
 
   return (
     <nav
+      ref={navRef}
       aria-label={isZh ? "时间线章节" : "Timeline chapters"}
       className="sticky top-14 z-30 -mx-6 mb-6 px-5 py-2.5 bg-chrono-bg/85 backdrop-blur-md border-b border-chrono-border/40"
     >
