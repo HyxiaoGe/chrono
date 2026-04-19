@@ -16,8 +16,6 @@ export default function ConnectionLines({
   containerHeight,
   hoveredId,
 }: ConnectionLinesProps) {
-  const hasActive = hoveredId !== null;
-
   return (
     <svg
       className="absolute inset-0 w-full pointer-events-none z-0"
@@ -26,6 +24,10 @@ export default function ConnectionLines({
       preserveAspectRatio="none"
     >
       {connections.map((conn, i) => {
+        // Only render lines connected to the hovered node
+        const isActive = hoveredId && (conn.from_id === hoveredId || conn.to_id === hoveredId);
+        if (!isActive) return null;
+
         const a = positions[conn.from_id];
         const b = positions[conn.to_id];
         if (!a || !b) return null;
@@ -38,21 +40,16 @@ export default function ConnectionLines({
         const sideSign = i % 2 === 0 ? -1 : 1;
         const ctrlX = cx + sideSign * bulge;
 
-        const isActive =
-          hasActive && (conn.from_id === hoveredId || conn.to_id === hoveredId);
-        const isDim = hasActive && !isActive;
-
         return (
           <path
             key={i}
             d={`M ${cx} ${ay} C ${ctrlX} ${ay + (by - ay) * 0.2}, ${ctrlX} ${ay + (by - ay) * 0.8}, ${cx} ${by}`}
             fill="none"
             stroke={connColor(conn.type)}
-            strokeWidth={isActive ? 1.6 : 1}
-            strokeOpacity={isActive ? 0.9 : isDim ? 0.08 : 0.28}
+            strokeWidth={1.6}
+            strokeOpacity={0.9}
             strokeDasharray={connDash(conn.type)}
             strokeLinecap="round"
-            style={{ transition: "stroke-opacity .25s, stroke-width .25s" }}
           />
         );
       })}

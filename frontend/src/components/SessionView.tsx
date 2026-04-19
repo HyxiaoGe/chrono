@@ -531,7 +531,6 @@ export function SessionView({ sessionId }: Props) {
           {nodes.length >= 10 && (
             <MiniMap
               nodes={nodes}
-              connections={connections}
               selectedId={selectedNodeId}
               hoveredId={hoveredId}
               onHover={setHoveredId}
