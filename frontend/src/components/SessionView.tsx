@@ -289,9 +289,11 @@ export function SessionView({ sessionId }: Props) {
   const handleNavigateToNode = useCallback((targetId: string) => {
     setSelectedNodeId(targetId);
     requestAnimationFrame(() => {
-      document
-        .getElementById(targetId)
-        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      const el = document.querySelector<HTMLElement>(`[data-node-id="${targetId}"]`);
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        window.scrollTo({ top: window.scrollY + rect.top - 140, behavior: "smooth" });
+      }
       if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
       setHighlightedNodeId(targetId);
       highlightTimerRef.current = setTimeout(() => {
