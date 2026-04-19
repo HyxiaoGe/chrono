@@ -455,16 +455,6 @@ function HeroSearch({ locale }: { locale: Locale }) {
         </div>
       </div>
 
-      {/* Complexity hint */}
-      <div className="mt-3 flex items-center justify-center gap-2 text-chrono-tiny text-chrono-text-muted">
-        <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-full bg-chrono-level-light" />light &middot; 15–25</span>
-        <span className="text-chrono-border">&middot;</span>
-        <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-full bg-chrono-level-medium" />medium &middot; 25–45</span>
-        <span className="text-chrono-border">&middot;</span>
-        <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-full bg-chrono-level-deep" />deep &middot; 50–80</span>
-        <span className="text-chrono-border">&middot;</span>
-        <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-full bg-chrono-level-epic" />epic &middot; 80–150+</span>
-      </div>
     </form>
   );
 }
@@ -523,27 +513,11 @@ export function Hero({ locale }: Props) {
           <HeroSearch locale={locale} />
         </div>
 
-        {/* Trust row */}
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-chrono-tiny text-chrono-text-muted">
-          <div className="inline-flex items-center gap-2">
-            <Icon name="sparkles" size={13} />
-            <span>
-              Powered by{" "}
-              <span className="font-mono text-chrono-text-secondary">deepseek-v3.2</span> &middot;{" "}
-              <span className="font-mono text-chrono-text-secondary">gpt-4.1</span> &middot;{" "}
-              <span className="font-mono text-chrono-text-secondary">claude-sonnet-4.5</span>
-            </span>
-          </div>
-          <span className="text-chrono-border hidden sm:inline">&middot;</span>
-          <div className="inline-flex items-center gap-2">
-            <Icon name="check" size={13} />
-            <span>{isZh ? "每个节点链接到原始来源" : "Every node links back to primary sources"}</span>
-          </div>
-          <span className="text-chrono-border hidden sm:inline">&middot;</span>
-          <div className="inline-flex items-center gap-2">
-            <Icon name="globe" size={13} />
-            <span>English &middot; 简体中文</span>
-          </div>
+        {/* Single quiet attribution */}
+        <div className="mt-6 text-chrono-tiny text-chrono-text-muted/70">
+          {isZh ? "每个节点引用原始来源" : "Every node cites primary sources"}
+          <span className="mx-2 text-chrono-border/70">&middot;</span>
+          <span className="font-mono">deepseek-v3.2 &middot; gpt-4.1 &middot; claude-sonnet-4.5</span>
         </div>
       </div>
 
