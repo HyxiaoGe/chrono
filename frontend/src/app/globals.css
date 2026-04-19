@@ -127,3 +127,11 @@ body {
   color: var(--color-chrono-text);
   font-family: var(--font-sans), system-ui, sans-serif;
 }
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

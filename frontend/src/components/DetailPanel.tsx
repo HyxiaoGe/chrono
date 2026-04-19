@@ -238,7 +238,7 @@ export function DetailPanel({
         </div>
 
         {/* ---- SCROLL BODY ---- */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto scrollbar-hide">
           {/* Description */}
           <div className="px-5 pt-5 pb-6">
             <p className="text-chrono-body leading-relaxed text-chrono-text-secondary">
