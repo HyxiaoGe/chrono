@@ -66,7 +66,7 @@ export function HowItWorks({ locale }: Props) {
   const isZh = locale === "zh";
 
   return (
-    <section className="py-24 sm:py-32 px-4">
+    <section id="how" className="py-24 sm:py-32 px-4">
       <div className="mx-auto max-w-5xl">
         {/* Header */}
         <div className="text-center mb-16">
