@@ -4,6 +4,7 @@ interface Props {
   name: string;
   size?: number;
   className?: string;
+  strokeWidth?: number;
 }
 
 const paths: Record<string, React.ReactElement> = {
@@ -166,7 +167,7 @@ const paths: Record<string, React.ReactElement> = {
   ),
 };
 
-export function Icon({ name, size = 16, className = "" }: Props) {
+export function Icon({ name, size = 16, className = "", strokeWidth = 1.5 }: Props) {
   return (
     <svg
       width={size}
@@ -174,7 +175,7 @@ export function Icon({ name, size = 16, className = "" }: Props) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.5"
+      strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={`shrink-0 ${className}`}
