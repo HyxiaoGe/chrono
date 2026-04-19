@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef, Fragment } from "react";
+import { useState, useEffect, useRef, useMemo, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import type { Locale } from "@/data/landing";
 import { Icon } from "@/components/ui/Icon";
+import { demoData } from "@/data/demo";
 
 /* ================================================================== */
 /*  TimelineTheater — 20s looping vertical timeline demo               */
@@ -12,7 +13,6 @@ import { Icon } from "@/components/ui/Icon";
 const LOOP_SECONDS = 20;
 const FADE_OUT_AT = 18.5;
 const FADE_DURATION = 1.3;
-const QUERY = "iPhone";
 
 const TIER_COLOR: Record<string, string> = {
   revolutionary: "#f0c060",
@@ -34,7 +34,7 @@ const CONN_LABEL: Record<string, string> = {
   responded_to: "responded",
 };
 
-/* ---- Demo data ---- */
+/* ---- Demo data derived from real database (demo.ts) ---- */
 
 interface TheaterNode {
   id: string;
@@ -45,9 +45,9 @@ interface TheaterNode {
   subtitle?: string;
   sig: "revolutionary" | "high" | "medium";
   description: string;
-  location?: string;
   tags?: string[];
   enrich: number;
+  phaseName: string;
 }
 
 interface TheaterConn {
@@ -57,65 +57,97 @@ interface TheaterConn {
   startAt: number;
 }
 
-const THEATER_NODES: TheaterNode[] = [
-  { id: "n0", date: "Jan 9, 2007", year: "2007", era: 0, title: "iPhone Announcement", subtitle: "Macworld 2007",
-    sig: "revolutionary", description: "Steve Jobs unveils an iPod, a phone, and an internet communicator — one device.",
-    location: "San Francisco", tags: ["launch", "tech"], enrich: 4.2 },
-  { id: "n1", date: "Jun 29, 2007", year: "2007", era: 0, title: "iPhone goes on sale", subtitle: "US market release",
-    sig: "high", description: "Original iPhone launches at $499 with multi-touch, Visual Voicemail, Mobile Safari.",
-    enrich: 5.0 },
-  { id: "n2", date: "Jul 11, 2008", year: "2008", era: 1, title: "App Store Launch", subtitle: "A third-party ecosystem",
-    sig: "revolutionary", description: "500 apps at launch; the mobile app economy begins.",
-    location: "Cupertino, CA", tags: ["platform", "launch"], enrich: 6.0 },
-  { id: "n3", date: "Jun 2009", year: "2009", era: 1, title: "iPhone 3GS",
-    sig: "medium", description: "Speed bump, video recording, voice control.",
-    enrich: 6.9 },
-  { id: "n4", date: "Jun 7, 2010", year: "2010", era: 2, title: "iPhone 4 & Retina", subtitle: "New industrial design",
-    sig: "high", description: "Retina Display and glass-and-steel body redefine the category.",
-    enrich: 7.8 },
-  { id: "n5", date: "Sep 10, 2013", year: "2013", era: 2, title: "Touch ID & 5s", subtitle: "Biometric auth arrives",
-    sig: "high", description: "First mainstream fingerprint sensor enables secure mobile payments.",
-    enrich: 8.7 },
-  { id: "n6", date: "Sep 12, 2017", year: "2017", era: 2, title: "iPhone X & Face ID", subtitle: "Edge-to-edge OLED",
-    sig: "revolutionary", description: "The home button disappears; Face ID arrives.",
-    location: "Cupertino, CA", tags: ["launch", "design"], enrich: 9.7 },
-  { id: "n7", date: "Sep 9, 2024", year: "2024", era: 3, title: "iPhone 16 & Apple Intelligence", subtitle: "On-device AI",
-    sig: "medium", description: "Integrated on-device AI lands across the lineup.",
-    enrich: 10.6 },
-];
+interface TheaterEra {
+  label: string;
+  short: string;
+  nodeIds: string[];
+}
 
-const THEATER_CONNS: TheaterConn[] = [
-  { from: 0, to: 1, kind: "caused", startAt: 11.2 },
-  { from: 1, to: 2, kind: "enabled", startAt: 11.7 },
-  { from: 2, to: 4, kind: "inspired", startAt: 12.1 },
-  { from: 4, to: 6, kind: "inspired", startAt: 12.5 },
-  { from: 5, to: 6, kind: "enabled", startAt: 12.9 },
-];
+/** Build theater data from demo.ts for a given locale */
+function buildTheaterData(locale: Locale) {
+  const demo = demoData[locale];
+  const nodes: TheaterNode[] = demo.nodes.map((n, i) => ({
+    id: n.id,
+    date: n.date,
+    year: n.date.slice(0, 4),
+    era: 0, // filled below
+    title: n.title,
+    subtitle: n.subtitle || undefined,
+    sig: n.significance as "revolutionary" | "high" | "medium",
+    description: n.description,
+    tags: demo.details[n.id]?.tags,
+    enrich: 4.2 + i * 0.9, // stagger enrichment across 4.2–10.5s
+    phaseName: n.phase_name || "",
+  }));
 
-const THEATER_ERAS = [
-  { label: "Genesis", short: "'07", nodeIds: ["n0", "n1"] },
-  { label: "Platform", short: "'08–'09", nodeIds: ["n2", "n3"] },
-  { label: "Refinement", short: "'10–'17", nodeIds: ["n4", "n5", "n6"] },
-  { label: "AI era", short: "'24", nodeIds: ["n7"] },
-];
+  // Build eras from phase_name
+  const phaseMap = new Map<string, string[]>();
+  nodes.forEach((n) => {
+    const key = n.phaseName || "Other";
+    const arr = phaseMap.get(key) || [];
+    arr.push(n.id);
+    phaseMap.set(key, arr);
+  });
+  const eras: TheaterEra[] = Array.from(phaseMap.entries()).map(([label, nodeIds]) => {
+    const eraNodes = nodeIds.map((id) => nodes.find((n) => n.id === id)!);
+    const years = [...new Set(eraNodes.map((n) => n.year))].sort();
+    const short = years.length > 1 ? `'${years[0].slice(2)}–'${years[years.length - 1].slice(2)}` : `'${years[0].slice(2)}`;
+    return { label, short, nodeIds };
+  });
 
-const SELECTED_ID = "n2";
+  // Assign era index to nodes
+  nodes.forEach((n) => {
+    n.era = eras.findIndex((e) => e.nodeIds.includes(n.id));
+  });
 
-const THEATER_DETAIL = {
-  quote: "The App Store reinvented how software is bought and sold.",
-  overview: "Apple opened the iPhone to third-party developers. 500 apps launched the first day — by year one, a billion downloads.",
-  keyStats: ["500 apps at launch · 1B downloads in 9 months", "70 / 30 revenue split with developers"],
-  keyPeople: [
-    { name: "Steve Jobs", role: "CEO, Apple" },
-    { name: "Scott Forstall", role: "SVP, iOS" },
-  ],
-  connectionsOut: [{ targetTitle: "iPhone 4 & Retina", rel: "inspired" }],
-  connectionsIn: [{ sourceTitle: "iPhone goes on sale", rel: "enabled" }],
-  sources: [
-    { domain: "apple.com", path: "/newsroom/2008/07" },
-    { domain: "macworld.com", path: "/article/app-store" },
-  ],
-};
+  // Connection arcs — link consecutive revolutionary/high nodes
+  const conns: TheaterConn[] = [];
+  const significantIndices = nodes
+    .map((n, i) => (n.sig !== "medium" ? i : -1))
+    .filter((i) => i >= 0);
+  const connKinds = ["caused", "enabled", "inspired", "enabled", "inspired"];
+  for (let j = 0; j < Math.min(significantIndices.length - 1, 5); j++) {
+    conns.push({
+      from: significantIndices[j],
+      to: significantIndices[j + 1],
+      kind: connKinds[j % connKinds.length],
+      startAt: 11.2 + j * 0.4,
+    });
+  }
+
+  // Detail for the selected node (first revolutionary node with details)
+  const selectedIdx = nodes.findIndex((n) => n.sig === "revolutionary" && demo.details[n.id]);
+  const selectedId = nodes[selectedIdx]?.id || nodes[0].id;
+  const selectedNode = nodes.find((n) => n.id === selectedId)!;
+  const details = demo.details[selectedId];
+
+  const detail = {
+    nodeId: selectedId,
+    quote: details?.notable_quote || "",
+    overview: selectedNode.description,
+    keyStats: details?.key_stats || details?.key_features?.slice(0, 2) || [],
+    keyPeople: (details?.key_people || []).slice(0, 2).map((p) => {
+      const parts = p.split(" — ");
+      return { name: parts[0], role: parts[1] || "" };
+    }),
+    connectionsOut: conns
+      .filter((c) => nodes[c.from].id === selectedId)
+      .map((c) => ({ targetTitle: nodes[c.to].title, rel: c.kind })),
+    connectionsIn: conns
+      .filter((c) => nodes[c.to].id === selectedId)
+      .map((c) => ({ sourceTitle: nodes[c.from].title, rel: c.kind })),
+    sources: (details?.sources || []).slice(0, 2).map((url) => {
+      try {
+        const u = new URL(url);
+        return { domain: u.hostname.replace(/^www\./, ""), path: u.pathname.slice(0, 20) };
+      } catch {
+        return { domain: url, path: "" };
+      }
+    }),
+  };
+
+  return { nodes, eras, conns, selectedId, detail, topic: demo.proposal.topic };
+}
 
 /* ---- Hooks & helpers ---- */
 
@@ -302,25 +334,27 @@ function MiniAxisDot({ sig, appeared, enriched, shimmer }: {
 
 /* ---- Mini EraNavigator ---- */
 
-function MiniEraNav({ nodeStates, scrollProgress }: {
+function MiniEraNav({ nodes, eras, nodeStates, scrollProgress }: {
+  nodes: TheaterNode[];
+  eras: TheaterEra[];
   nodeStates: Record<string, { appeared: number; enriched: number }>;
   scrollProgress: number;
 }) {
   return (
     <div className="relative px-3 pt-2.5 pb-2 border-b border-chrono-border/40 bg-chrono-bg/60 backdrop-blur-sm">
       <div className="flex items-center gap-1">
-        {THEATER_ERAS.map((era, i) => {
-          const isActive = scrollProgress >= i / THEATER_ERAS.length && scrollProgress < (i + 1) / THEATER_ERAS.length;
+        {eras.map((era, i) => {
+          const isActive = scrollProgress >= i / eras.length && scrollProgress < (i + 1) / eras.length;
           return (
-            <div key={era.label} className="flex items-center gap-1.5" style={{ width: `${100 / THEATER_ERAS.length}%` }}>
-              <div className="flex-1">
-                <div className="flex items-baseline gap-1">
-                  <span className={`text-[10px] font-medium ${isActive ? "text-chrono-accent" : "text-chrono-text-secondary"}`}>{era.label}</span>
-                  <span className="font-mono text-[9px] text-chrono-text-muted/70">{era.short}</span>
+            <div key={era.label} className="flex items-center gap-1.5" style={{ width: `${100 / eras.length}%` }}>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline gap-1 min-w-0">
+                  <span className={`text-[10px] font-medium truncate ${isActive ? "text-chrono-accent" : "text-chrono-text-secondary"}`}>{era.label}</span>
+                  <span className="font-mono text-[9px] text-chrono-text-muted/70 shrink-0">{era.short}</span>
                 </div>
                 <div className="mt-1 flex items-center gap-0.5 h-2">
                   {era.nodeIds.map((nid) => {
-                    const node = THEATER_NODES.find((n) => n.id === nid)!;
+                    const node = nodes.find((n) => n.id === nid)!;
                     const st = nodeStates[nid] || { appeared: 0, enriched: 0 };
                     const color = TIER_COLOR[node.sig];
                     const dotSize = node.sig === "revolutionary" ? 5 : node.sig === "high" ? 4 : 3;
@@ -348,8 +382,8 @@ function MiniEraNav({ nodeStates, scrollProgress }: {
 
 /* ---- Mini ProgressBar ---- */
 
-function MiniProgressBar({ t, nodeStates }: {
-  t: number; nodeStates: Record<string, { enriched: number }>;
+function MiniProgressBar({ t, nodeStates, nodeCount }: {
+  t: number; nodeStates: Record<string, { enriched: number }>; nodeCount: number;
 }) {
   const phases = [
     { key: "skeleton", label: "Skeleton", startAt: 2.9, endAt: 4.3 },
@@ -384,7 +418,7 @@ function MiniProgressBar({ t, nodeStates }: {
       </div>
       <div className="mt-1.5 flex items-center gap-2 text-[9.5px] text-chrono-text-muted font-mono">
         <span className="rounded bg-chrono-accent/10 px-1.5 py-0.5 text-chrono-accent/80">deepseek-v3.2</span>
-        {activeIdx === 1 && <span className="tabular-nums">{completed}/{THEATER_NODES.length} done</span>}
+        {activeIdx === 1 && <span className="tabular-nums">{completed}/{nodeCount} done</span>}
         {activeIdx === 2 && <span className="text-chrono-text-secondary">finding connections…</span>}
         {activeIdx === 3 && <span className="text-chrono-text-secondary">writing summary…</span>}
         <span className="ml-auto tabular-nums">{mm}:{ss}</span>
@@ -395,9 +429,12 @@ function MiniProgressBar({ t, nodeStates }: {
 
 /* ---- Mini DetailPanel ---- */
 
-function MiniDetailPanel({ openAmt, t }: { openAmt: number; t: number }) {
+function MiniDetailPanel({ openAmt, t, node, detail }: {
+  openAmt: number; t: number;
+  node: TheaterNode;
+  detail: ReturnType<typeof buildTheaterData>["detail"];
+}) {
   const reveal = clamp01((t - 11.5) / 0.5);
-  const node = THEATER_NODES.find((n) => n.id === SELECTED_ID)!;
   if (openAmt < 0.02) return null;
 
   return (
@@ -431,7 +468,7 @@ function MiniDetailPanel({ openAmt, t }: { openAmt: number; t: number }) {
         <div className="mt-3 relative">
           <span className="absolute -top-1 -left-0.5 text-[28px] leading-none font-serif text-chrono-accent/30 select-none">&ldquo;</span>
           <blockquote className="pl-4 pr-1">
-            <p className="text-[10px] italic text-chrono-text leading-snug">{THEATER_DETAIL.quote}</p>
+            <p className="text-[10px] italic text-chrono-text leading-snug">{detail.quote}</p>
           </blockquote>
         </div>
 
@@ -439,7 +476,7 @@ function MiniDetailPanel({ openAmt, t }: { openAmt: number; t: number }) {
         <div className="mt-3">
           <div className="h-px bg-chrono-border/30 mb-2" />
           <div className="text-[8.5px] uppercase tracking-wider text-chrono-text-secondary font-semibold mb-1">Overview</div>
-          <p className="text-[10px] text-chrono-text-secondary leading-snug">{THEATER_DETAIL.overview}</p>
+          <p className="text-[10px] text-chrono-text-secondary leading-snug">{detail.overview}</p>
         </div>
 
         {/* Key Stats */}
@@ -447,7 +484,7 @@ function MiniDetailPanel({ openAmt, t }: { openAmt: number; t: number }) {
           <div className="h-px bg-chrono-border/30 mb-2" />
           <div className="text-[8.5px] uppercase tracking-wider text-chrono-text-secondary font-semibold mb-1">Key Stats</div>
           <ul className="space-y-1">
-            {THEATER_DETAIL.keyStats.map((s, i) => (
+            {detail.keyStats.map((s, i) => (
               <li key={i} className="rounded-md bg-chrono-bg/40 px-2 py-1">
                 <span className="text-[9.5px] text-chrono-text-secondary leading-tight">{s}</span>
               </li>
@@ -460,7 +497,7 @@ function MiniDetailPanel({ openAmt, t }: { openAmt: number; t: number }) {
           <div className="h-px bg-chrono-border/30 mb-2" />
           <div className="text-[8.5px] uppercase tracking-wider text-chrono-text-secondary font-semibold mb-1">Key People</div>
           <ul className="space-y-1">
-            {THEATER_DETAIL.keyPeople.map((p, i) => (
+            {detail.keyPeople.map((p, i) => (
               <li key={i} className="flex items-center gap-2">
                 <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-chrono-border/50 bg-chrono-bg/40 text-[8px] font-semibold text-chrono-text-secondary font-mono">
                   {p.name.split(" ").map((w) => w[0]).join("")}
@@ -479,14 +516,14 @@ function MiniDetailPanel({ openAmt, t }: { openAmt: number; t: number }) {
           <div className="h-px bg-chrono-border/30 mb-2" />
           <div className="text-[8.5px] uppercase tracking-wider text-chrono-accent/90 font-semibold mb-1">Connected Moments</div>
           <div className="text-[8.5px] text-chrono-text-muted/70 mb-0.5">&rarr; Led to</div>
-          {THEATER_DETAIL.connectionsOut.map((c, i) => (
+          {detail.connectionsOut.map((c, i) => (
             <div key={i} className="flex items-center gap-1 rounded px-1 py-0.5">
               <span className="flex-1 text-[9.5px] text-chrono-text-secondary truncate">{c.targetTitle}</span>
               <span className="rounded-full bg-chrono-inspired/15 text-chrono-inspired px-1.5 py-0.5 text-[8.5px]">{c.rel}</span>
             </div>
           ))}
           <div className="text-[8.5px] text-chrono-text-muted/70 mb-0.5 mt-1">&larr; Shaped by</div>
-          {THEATER_DETAIL.connectionsIn.map((c, i) => (
+          {detail.connectionsIn.map((c, i) => (
             <div key={i} className="flex items-center gap-1 rounded px-1 py-0.5">
               <span className="flex-1 text-[9.5px] text-chrono-text-secondary truncate">{c.sourceTitle}</span>
               <span className="rounded-full bg-chrono-enabled/15 text-chrono-enabled px-1.5 py-0.5 text-[8.5px]">{c.rel}</span>
@@ -499,7 +536,7 @@ function MiniDetailPanel({ openAmt, t }: { openAmt: number; t: number }) {
           <div className="h-px bg-chrono-border/30 mb-2" />
           <div className="text-[8.5px] uppercase tracking-wider text-chrono-text-secondary font-semibold mb-1">Sources</div>
           <ul className="space-y-0.5">
-            {THEATER_DETAIL.sources.map((s, i) => (
+            {detail.sources.map((s, i) => (
               <li key={i} className="flex items-center gap-1.5 px-1 py-0.5">
                 <span className="size-1.5 shrink-0 rounded-full bg-chrono-border" />
                 <span className="text-[9.5px] truncate">
@@ -517,8 +554,10 @@ function MiniDetailPanel({ openAmt, t }: { openAmt: number; t: number }) {
 
 /* ---- TimelineTheater ---- */
 
-function TimelineTheater() {
+function TimelineTheater({ locale }: { locale: Locale }) {
   const t = useLoopClock();
+  const data = useMemo(() => buildTheaterData(locale), [locale]);
+  const { nodes: THEATER_NODES, eras: THEATER_ERAS, conns: THEATER_CONNS, selectedId: SELECTED_ID, detail: THEATER_DETAIL, topic } = data;
 
   const CARD_H = 560;
   const HEADER_H = 40;
@@ -529,8 +568,8 @@ function TimelineTheater() {
   const TIMELINE_W = 610;
 
   // Query typing
-  const queryLen = Math.min(QUERY.length, Math.floor((t / 2.2) * QUERY.length));
-  const queryText = t < 2.3 ? QUERY.slice(0, queryLen) : QUERY;
+  const queryLen = Math.min(topic.length, Math.floor((t / 2.2) * topic.length));
+  const queryText = t < 2.3 ? topic.slice(0, queryLen) : topic;
   const submitFlash = t > 2.3 && t < 2.75;
 
   // Node states
@@ -544,8 +583,8 @@ function TimelineTheater() {
     nodeStates[n.id] = { appeared, enriched, shimmer, activeNow };
   });
 
-  // Vertical positions
-  const NODE_SPACING = 92;
+  // Vertical positions — increased spacing to prevent overlap
+  const NODE_SPACING = 120;
   const nodePos = THEATER_NODES.map((n, i) => ({ id: n.id, side: (i % 2 === 0 ? "l" : "r") as "l" | "r", y: i * NODE_SPACING + 20 }));
   const TOTAL_TL_H = THEATER_NODES.length * NODE_SPACING + 80;
   const VIEWPORT_H = CARD_H - TIMELINE_TOP;
@@ -606,7 +645,7 @@ function TimelineTheater() {
               {t < 2.3 && <span className="inline-block w-[1px] h-[10px] bg-chrono-accent align-[-1px] ml-[1px] caret" />}
             </span>
             <span className="ml-1 text-[9px] font-medium px-1 py-0.5 rounded bg-chrono-accent/15 text-chrono-accent" style={{
-              opacity: queryText.length === QUERY.length ? 1 : 0.25, transition: "opacity 200ms",
+              opacity: queryText.length === topic.length ? 1 : 0.25, transition: "opacity 200ms",
               boxShadow: submitFlash ? "0 0 12px rgba(212,160,80,0.45)" : "none",
             }}>
               research &rarr;
@@ -626,8 +665,8 @@ function TimelineTheater() {
           </div>
         </div>
 
-        <MiniEraNav nodeStates={nodeStates} scrollProgress={scrollProgress} />
-        <MiniProgressBar t={t} nodeStates={nodeStates} />
+        <MiniEraNav nodes={THEATER_NODES} eras={THEATER_ERAS} nodeStates={nodeStates} scrollProgress={scrollProgress} />
+        <MiniProgressBar t={t} nodeStates={nodeStates} nodeCount={THEATER_NODES.length} />
 
         {/* Timeline viewport */}
         <div className="relative" style={{ height: VIEWPORT_H }}>
@@ -723,7 +762,7 @@ function TimelineTheater() {
             <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-chrono-bg/30 to-transparent" />
           </div>
 
-          <MiniDetailPanel openAmt={panelOpen} t={t} />
+          <MiniDetailPanel openAmt={panelOpen} t={t} node={THEATER_NODES.find((n) => n.id === SELECTED_ID)!} detail={THEATER_DETAIL} />
         </div>
       </div>
     </div>
@@ -838,10 +877,10 @@ export function Hero({ locale }: Props) {
             {isZh ? "观看时间线自动构建" : "Watch a timeline build itself"}
           </div>
           <span className="font-mono text-chrono-tiny text-chrono-text-muted">
-            query: <span className="text-chrono-text-secondary">iPhone</span> &middot; replaying at 10&times;
+            query: <span className="text-chrono-text-secondary">{demoData[locale].proposal.topic}</span> &middot; replaying at 10&times;
           </span>
         </div>
-        <TimelineTheater />
+        <TimelineTheater locale={locale} />
         <p className="mt-4 text-chrono-caption text-chrono-text-muted text-center max-w-2xl mx-auto">
           {isZh
             ? "节点随着智能体完成而流式出现。重要性层级、年份锚点和因果关联并行解析 — 实际运行约需 2–8 分钟。"
