@@ -21,13 +21,13 @@ import { AppShell } from "./AppShell";
 import { ProposalCard } from "./ProposalCard";
 import { Timeline } from "./Timeline";
 import { DetailPanel } from "./DetailPanel";
-import { MiniMap } from "./MiniMap";
 import { SimilarTopicCard } from "./SimilarTopicCard";
 import TopBar from "./TopBar";
 import ProgressBar from "./ProgressBar";
 import CompletionBanner from "./CompletionBanner";
 import SynthesisBanner from "./SynthesisBanner";
 import SkeletonNode from "./SkeletonNode";
+import EraNavigator from "./EraNavigator";
 
 const ACTIVE_SESSION_KEY = "chrono-active-session";
 
@@ -515,7 +515,7 @@ export function SessionView({ sessionId }: Props) {
     );
   }
 
-  // --- Research phase: three-column layout with TopBar (no AppShell) ---
+  // --- Research phase: two-column layout with TopBar + EraNavigator ---
   return (
     <div className="min-h-screen bg-chrono-bg text-chrono-text">
       <TopBar
@@ -525,23 +525,23 @@ export function SessionView({ sessionId }: Props) {
         language={language}
       />
 
-      <main className="mx-auto max-w-[1440px] px-6 pt-6 pb-16">
-        <div className="flex gap-6">
-          {/* LEFT: MiniMap */}
-          {nodes.length >= 10 && (
-            <MiniMap
-              nodes={nodes}
-              selectedId={selectedNodeId}
-              hoveredId={hoveredId}
-              onHover={setHoveredId}
-              onJumpTo={handleNavigateToNode}
-              scrollTop={scrollState.scrollTop}
-              scrollHeight={scrollState.scrollHeight}
-              viewportHeight={scrollState.viewportHeight}
-              language={language}
-            />
-          )}
+      <main className="mx-auto max-w-[1440px] px-6 pt-0 pb-16">
+        {/* Era navigator — sticky under TopBar */}
+        {nodes.length >= 3 && (
+          <EraNavigator
+            nodes={nodes}
+            activeNodeId={selectedNodeId}
+            hoveredId={hoveredId}
+            onJumpToNode={handleNavigateToNode}
+            onHoverNode={setHoveredId}
+            scrollTop={scrollState.scrollTop}
+            scrollHeight={scrollState.scrollHeight}
+            viewportHeight={scrollState.viewportHeight}
+            language={language}
+          />
+        )}
 
+        <div className="flex gap-6 pt-2">
           {/* CENTER: Timeline */}
           <div className="min-w-0 flex-1">
             {!completeData && researchPhase && (
