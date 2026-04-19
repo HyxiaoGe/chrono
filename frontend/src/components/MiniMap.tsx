@@ -60,7 +60,7 @@ export function MiniMap({
     year: parseInt(n.date.slice(0, 4), 10),
   }));
 
-  // Year labels — show first, last, and every 3rd year
+  // Year labels — show every year
   const yearMarkers = (() => {
     const seen = new Map<number, number>();
     positions.forEach((p) => {
@@ -86,7 +86,7 @@ export function MiniMap({
       <div
         ref={mapRef}
         className="relative rounded-lg border border-chrono-border/40 bg-chrono-surface/30 backdrop-blur-sm overflow-hidden"
-        style={{ height: "calc(100% - 110px)" }}
+        style={{ height: "calc(100% - 30px)" }}
       >
         {/* Central spine */}
         <div
@@ -95,19 +95,15 @@ export function MiniMap({
         />
 
         {/* Year labels (no gridlines) */}
-        {yearMarkers.map(([yr, y], i) => {
-          const showLabel = i === 0 || i === yearMarkers.length - 1 || yr % 3 === 0;
-          if (!showLabel) return null;
-          return (
-            <span
-              key={yr}
-              className="absolute left-1.5 text-[9px] font-mono text-chrono-text-muted/50 tabular-nums pointer-events-none"
-              style={{ top: `${y - 6}px` }}
-            >
-              &rsquo;{String(yr).slice(2)}
-            </span>
-          );
-        })}
+        {yearMarkers.map(([yr, y]) => (
+          <span
+            key={yr}
+            className="absolute left-1.5 text-[11px] font-mono text-chrono-text-muted/60 tabular-nums pointer-events-none"
+            style={{ top: `${y - 7}px` }}
+          >
+            {String(yr).slice(2)}
+          </span>
+        ))}
 
         {/* Viewport indicator */}
         <div
@@ -120,7 +116,7 @@ export function MiniMap({
           const isSelected = n.id === selectedId;
           const isHovered = n.id === hoveredId;
           const color = sigColor(n.significance);
-          const size = n.significance === "revolutionary" ? 9 : n.significance === "high" ? 6.5 : 4.5;
+          const size = n.significance === "revolutionary" ? 11 : n.significance === "high" ? 8 : 5.5;
           const hit = 20;
 
           return (
@@ -179,21 +175,6 @@ export function MiniMap({
           })()}
       </div>
 
-      {/* Legend */}
-      <div className="mt-3 grid grid-cols-1 gap-1.5 px-2">
-        <div className="flex items-center gap-1.5">
-          <span className="h-[9px] w-[9px] rounded-full bg-chrono-revolutionary shadow-[0_0_4px_0_#f0c06080]" />
-          <span className="text-chrono-tiny text-chrono-text-muted">{isZh ? "突破" : "Revolutionary"}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="h-[6.5px] w-[6.5px] rounded-full bg-chrono-high" />
-          <span className="text-chrono-tiny text-chrono-text-muted">{isZh ? "重要" : "High"}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="h-[4.5px] w-[4.5px] rounded-full bg-chrono-medium" />
-          <span className="text-chrono-tiny text-chrono-text-muted">{isZh ? "一般" : "Medium"}</span>
-        </div>
-      </div>
     </div>
   );
 }
