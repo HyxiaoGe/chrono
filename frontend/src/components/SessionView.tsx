@@ -543,7 +543,7 @@ export function SessionView({ sessionId }: Props) {
           />
         )}
 
-        <div className="flex gap-6 pt-2">
+        <div className="flex gap-6 pt-2 min-h-[calc(100vh-10rem)]">
           {/* CENTER: Timeline */}
           <div className="min-w-0 flex-1">
             {!completeData && researchPhase && (
