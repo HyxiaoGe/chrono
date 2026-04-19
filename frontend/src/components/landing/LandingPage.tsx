@@ -3,9 +3,11 @@
 import { useLocale } from "@/data/landing";
 import { Navbar } from "@/components/Navbar";
 import { Hero } from "./Hero";
+import { ExploreTopics } from "./ExploreTopics";
 import { HowItWorks } from "./HowItWorks";
-import { Features } from "./Features";
+import { RecentResearches } from "./RecentResearches";
 import { FooterCTA } from "./FooterCTA";
+import { Footer } from "./Footer";
 
 export function LandingPage() {
   const [locale, toggleLocale] = useLocale();
@@ -14,9 +16,11 @@ export function LandingPage() {
     <div className="min-h-screen bg-chrono-bg">
       <Navbar locale={locale} onToggleLocale={toggleLocale} mode="landing" />
       <Hero locale={locale} />
+      <ExploreTopics locale={locale} />
       <HowItWorks locale={locale} />
-      <Features locale={locale} />
+      <RecentResearches locale={locale} />
       <FooterCTA locale={locale} />
+      <Footer locale={locale} />
     </div>
   );
 }
