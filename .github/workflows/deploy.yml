@@ -29,6 +29,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Record start time
+        run: echo "BUILD_START=$(date +%s)" >> $GITHUB_ENV
+
       - name: Deploy
         run: |
           cd ~/project/chrono
@@ -64,3 +67,7 @@ jobs:
           fi
 
           docker image prune -f
+
+      - name: Push deploy metrics
+        if: always()
+        run: bash ~/scripts/push-deploy-metrics.sh chrono master ${{ job.status }} ${{ env.BUILD_START }}
