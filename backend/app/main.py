@@ -1,5 +1,6 @@
 import copy
 import logging
+import os
 import uuid
 from contextlib import asynccontextmanager
 
@@ -40,7 +41,14 @@ async def lifespan(app: FastAPI):
 
 
 logging.basicConfig(level=logging.INFO)
-app = FastAPI(title="Chrono API", lifespan=lifespan)
+_enable_docs = os.getenv("ENABLE_DOCS", "true").lower() == "true"
+app = FastAPI(
+    title="Chrono API",
+    lifespan=lifespan,
+    docs_url="/docs" if _enable_docs else None,
+    redoc_url="/redoc" if _enable_docs else None,
+    openapi_url="/openapi.json" if _enable_docs else None,
+)
 tavily_service = TavilyService()
 session_manager = SessionManager()
 orchestrator = Orchestrator(tavily=tavily_service)
