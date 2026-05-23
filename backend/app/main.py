@@ -5,6 +5,8 @@ import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
 
 from app.agents.similar_topic import find_similar_topic
 from app.data.recommended import RECOMMENDED_TOPICS
@@ -13,6 +15,7 @@ from app.db.redis import (
     cache_proposal,
     close_redis,
     get_cached_proposal,
+    get_redis,
     store_session,
 )
 from app.db.repository import get_research_by_topic, list_researches, list_topic_candidates
@@ -53,6 +56,43 @@ tavily_service = TavilyService()
 session_manager = SessionManager()
 orchestrator = Orchestrator(tavily=tavily_service)
 lifecycle_service = SessionLifecycleService(session_manager)
+
+
+@app.get("/health")
+async def health_check() -> JSONResponse:
+    checks: dict[str, str] = {}
+    healthy = True
+
+    if async_session_factory is None:
+        checks["database"] = "not_configured"
+    else:
+        try:
+            async with async_session_factory() as db:
+                await db.execute(text("SELECT 1"))
+            checks["database"] = "ok"
+        except Exception as exc:
+            checks["database"] = f"error: {exc}"
+            healthy = False
+
+    redis_client = get_redis()
+    if redis_client is None:
+        checks["redis"] = "not_configured"
+    else:
+        try:
+            await redis_client.ping()
+            checks["redis"] = "ok"
+        except Exception as exc:
+            checks["redis"] = f"error: {exc}"
+            healthy = False
+
+    return JSONResponse(
+        status_code=200 if healthy else 503,
+        content={
+            "status": "healthy" if healthy else "unhealthy",
+            "service": "chrono-backend",
+            "checks": checks,
+        },
+    )
 
 
 @app.get("/api/researches")
