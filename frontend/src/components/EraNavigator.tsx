@@ -120,7 +120,18 @@ export default function EraNavigator({
   }, [nodes.length]);
 
   const eraData = useMemo(() => buildEras(nodes), [nodes]);
-  const totalWeight = eraData.reduce((s, e) => s + e.weight, 0);
+  const totalWeight = eraData.reduce((s, e) => s + e.weight, 0) || 1;
+  const eraMarkerPositions = useMemo(() => {
+    return eraData.slice(1).map((era, index) => {
+      const accumulatedWeight = eraData
+        .slice(0, index + 1)
+        .reduce((sum, item) => sum + item.weight, 0);
+      return {
+        key: era.key,
+        left: (accumulatedWeight / totalWeight) * 100,
+      };
+    });
+  }, [eraData, totalWeight]);
 
   // scroll progress 0..1
   const progress = scrollHeight > viewportHeight ? scrollTop / (scrollHeight - viewportHeight) : 0;
@@ -317,20 +328,13 @@ export default function EraNavigator({
           className="absolute inset-y-0 left-0 bg-chrono-accent/70 rounded-full transition-[width] duration-100"
           style={{ width: `${Math.round(progress * 100)}%` }}
         />
-        {(() => {
-          let acc = 0;
-          return eraData.map((era, i) => {
-            if (i === 0) return null;
-            acc += eraData[i - 1].weight / totalWeight;
-            return (
-              <span
-                key={era.key}
-                className="absolute top-0 bottom-0 w-px bg-chrono-border/40"
-                style={{ left: `${acc * 100}%` }}
-              />
-            );
-          });
-        })()}
+        {eraMarkerPositions.map((marker) => (
+          <span
+            key={marker.key}
+            className="absolute top-0 bottom-0 w-px bg-chrono-border/40"
+            style={{ left: `${marker.left}%` }}
+          />
+        ))}
       </div>
     </nav>
   );

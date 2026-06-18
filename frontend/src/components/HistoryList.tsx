@@ -163,8 +163,6 @@ export function HistoryList({ onSelectTopic, locale, disabled }: Props) {
 
   useEffect(() => {
     if (fetchedLocale === locale) return;
-    const isInitial = fetchedLocale === null;
-    if (isInitial) setLoading(true);
     fetch(`/api/researches?locale=${locale}`)
       .then((r) => {
         if (!r.ok) throw new Error();

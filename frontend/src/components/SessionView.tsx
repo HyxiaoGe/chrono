@@ -9,7 +9,6 @@ import type {
   SynthesisData,
   CompleteData,
   ProgressData,
-  NodeProgressData,
   SkeletonNodeData,
   NodeDetailEvent,
 } from "@/types";
@@ -72,7 +71,6 @@ export function SessionView({ sessionId }: Props) {
 
   const [streamSessionId, setStreamSessionId] = useState<string | null>(null);
   const [nodes, setNodes] = useState<TimelineNode[]>([]);
-  const [progressMessage, setProgressMessage] = useState("");
   const [synthesisData, setSynthesisData] = useState<SynthesisData | null>(null);
   const [completeData, setCompleteData] = useState<CompleteData | null>(null);
 
@@ -80,8 +78,6 @@ export function SessionView({ sessionId }: Props) {
   const [isNavigating, setIsNavigating] = useState(false);
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
-  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [scrollState, setScrollState] = useState({
@@ -93,9 +89,6 @@ export function SessionView({ sessionId }: Props) {
   const [researchPhase, setResearchPhase] = useState<string>("");
   const [researchModel, setResearchModel] = useState<string>("");
   const [researchStartTime] = useState<number>(Date.now());
-  const [nodeProgressMap, setNodeProgressMap] = useState<
-    Map<string, NodeProgressData>
-  >(new Map());
 
   // --- Init ---
   const didInit = useRef(false);
@@ -294,18 +287,12 @@ export function SessionView({ sessionId }: Props) {
         const rect = el.getBoundingClientRect();
         window.scrollTo({ top: window.scrollY + rect.top - 140, behavior: "smooth" });
       }
-      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
-      setHighlightedNodeId(targetId);
-      highlightTimerRef.current = setTimeout(() => {
-        setHighlightedNodeId(null);
-      }, 1500);
     });
   }, []);
 
   // --- SSE ---
   useResearchStream(streamSessionId, {
     onProgress: useCallback((data: ProgressData) => {
-      setProgressMessage(data.message);
       setResearchPhase(data.phase);
       if (data.model) setResearchModel(data.model);
       if (data.phase === "detail") {
@@ -315,14 +302,6 @@ export function SessionView({ sessionId }: Props) {
           ),
         );
       }
-    }, []),
-
-    onNodeProgress: useCallback((data: NodeProgressData) => {
-      setNodeProgressMap((prev) => {
-        const next = new Map(prev);
-        next.set(data.node_id, data);
-        return next;
-      });
     }, []),
 
     onSkeleton: useCallback(
@@ -372,11 +351,6 @@ export function SessionView({ sessionId }: Props) {
             : n,
         ),
       );
-      setNodeProgressMap((prev) => {
-        const next = new Map(prev);
-        next.delete(node_id);
-        return next;
-      });
     }, []),
 
     onSynthesis: useCallback((data: SynthesisData) => {
@@ -385,7 +359,6 @@ export function SessionView({ sessionId }: Props) {
 
     onComplete: useCallback((data: CompleteData) => {
       setCompleteData(data);
-      setProgressMessage("");
       clearActiveSession();
     }, []),
 

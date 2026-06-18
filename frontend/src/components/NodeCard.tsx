@@ -20,11 +20,11 @@ export default function NodeCard({
   dimmed,
   onClick,
   onHover,
-  side,
 }: NodeCardProps) {
   const sig = node.significance;
   const color = sigColor(sig);
   const base = "cursor-pointer transition-all duration-200";
+  const dimClass = dimmed ? "opacity-35" : "";
   const relatedRing = isRelated && !isSelected ? "ring-1 ring-chrono-accent/30" : "";
   const selRing = isSelected ? "ring-2 ring-chrono-accent/60" : "";
 
@@ -60,7 +60,7 @@ export default function NodeCard({
         onMouseEnter={() => onHover(node.id)}
         onMouseLeave={() => onHover(null)}
         data-node-id={node.id}
-        className={`${base} ${relatedRing} ${selRing} rounded-xl border p-5 shadow-md`}
+        className={`${base} ${dimClass} ${relatedRing} ${selRing} rounded-xl border p-5 shadow-md`}
         style={{
           background: "linear-gradient(180deg, #27272a 0%, #18181b 100%)",
           borderColor: "rgba(240,192,96,0.5)",
@@ -87,7 +87,7 @@ export default function NodeCard({
         onMouseEnter={() => onHover(node.id)}
         onMouseLeave={() => onHover(null)}
         data-node-id={node.id}
-        className={`${base} ${relatedRing} ${selRing} rounded-lg border p-4`}
+        className={`${base} ${dimClass} ${relatedRing} ${selRing} rounded-lg border p-4`}
         style={{
           backgroundColor: "rgba(24,24,27,0.7)",
           borderColor: "rgba(63,63,70,0.6)",
@@ -111,7 +111,7 @@ export default function NodeCard({
       onMouseEnter={() => onHover(node.id)}
       onMouseLeave={() => onHover(null)}
       data-node-id={node.id}
-      className={`${base} ${relatedRing} ${selRing} rounded-md px-3.5 py-2.5`}
+      className={`${base} ${dimClass} ${relatedRing} ${selRing} rounded-md px-3.5 py-2.5`}
       style={{
         backgroundColor: "rgba(24,24,27,0.3)",
         borderLeft: `2px solid ${color}80`,

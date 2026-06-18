@@ -3,7 +3,10 @@ import { useState, useEffect, useRef, useCallback } from "react";
 export function useActiveNode(nodeIds: string[]): string | null {
   const [activeId, setActiveId] = useState<string | null>(null);
   const nodeIdsRef = useRef(nodeIds);
-  nodeIdsRef.current = nodeIds;
+
+  useEffect(() => {
+    nodeIdsRef.current = nodeIds;
+  }, [nodeIds]);
 
   const findClosest = useCallback(() => {
     const ids = nodeIdsRef.current;

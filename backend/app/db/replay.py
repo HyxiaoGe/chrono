@@ -1,13 +1,9 @@
 from __future__ import annotations
 
 import uuid
+from typing import Any
 
-from sqlalchemy import select
-
-from app.db.database import async_session_factory
-from app.db.models import ResearchRow
 from app.db.redis import update_session_status
-from app.db.repository import get_nodes_for_research
 from app.models.runtime import RuntimeTimelineNode
 from app.models.session import ResearchSession, SessionStatus
 from app.sse.event_publisher import (
@@ -19,13 +15,31 @@ from app.sse.event_publisher import (
 
 
 async def replay_research(session: ResearchSession, research_id: uuid.UUID) -> None:
-    assert async_session_factory is not None
+    research, node_rows = await _load_research_snapshot(research_id)
+    await _emit_research_replay(session, research, node_rows)
 
+
+async def _load_research_snapshot(research_id: uuid.UUID) -> tuple[Any, list[Any]]:
+    from sqlalchemy import select
+
+    from app.db.database import async_session_factory
+    from app.db.models import ResearchRow
+    from app.db.repository import get_nodes_for_research
+
+    assert async_session_factory is not None
     async with async_session_factory() as db:
         result = await db.execute(select(ResearchRow).where(ResearchRow.id == research_id))
         research = result.scalar_one()
         node_rows = await get_nodes_for_research(db, research_id)
 
+    return research, node_rows
+
+
+async def _emit_research_replay(
+    session: ResearchSession,
+    research: Any,
+    node_rows: list[Any],
+) -> None:
     nodes: list[RuntimeTimelineNode] = []
     for row in node_rows:
         payload = {

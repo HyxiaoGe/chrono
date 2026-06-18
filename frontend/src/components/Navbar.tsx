@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { Globe } from "lucide-react";
 import type { Locale } from "@/data/landing";
-import { messages } from "@/data/landing";
 
 type NavbarMode = "landing" | "search" | "session";
 
@@ -52,11 +51,9 @@ export function Navbar({
   onToggleLocale,
   mode = "search",
   topic,
-  activeYear,
   activePhase,
   onBack,
 }: Props) {
-  const t = messages[locale].nav;
   const isZh = locale === "zh";
 
   // Landing mode — full prototype-faithful navbar

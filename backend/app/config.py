@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     detail_model_pool: str = ""
     detail_concurrency: int = 4
 
-    model_config = {"env_file": ".env"}
+    model_config = {"env_file": ".env", "extra": "ignore"}
 
 
 settings = Settings()

@@ -32,8 +32,9 @@ from app.config import settings  # noqa: E402
 from app.db.database import async_session_factory  # noqa: E402
 from app.db.repository import get_nodes_for_research, list_researches  # noqa: E402
 from app.models.research import Significance, SkeletonNode  # noqa: E402
-from app.orchestrator.orchestrator import (  # noqa: E402
+from app.orchestrator.dedup import (  # noqa: E402
     _boundary_scan_dedup,
+    _dedup_agent,
     _exact_title_dedup,
     _llm_year_group_dedup,
 )
@@ -77,8 +78,6 @@ async def _run_dedup_pipeline(
     Temporarily patches the _dedup_agent's model for testing.
     Returns (deduped_nodes, elapsed_seconds).
     """
-    from app.orchestrator.orchestrator import _dedup_agent
-
     # Resolve the test model
     test_model = resolve_model(model_name)
 
