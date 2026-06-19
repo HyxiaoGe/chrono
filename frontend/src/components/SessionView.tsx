@@ -5,8 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type {
   CompleteData,
   ResearchProposal,
+  ResearchProposalResponse,
   SimilarTopicMatch,
 } from "@/types";
+import { createResearch, fetchResearchStatus } from "@/api/research";
 import { useLocale } from "@/data/landing";
 import { useResearchStream } from "@/hooks/useResearchStream";
 import { useResearchEventsReducer } from "@/hooks/useResearchEventsReducer";
@@ -51,6 +53,17 @@ type SessionPhase = "loading" | "similar" | "proposal" | "research" | "error";
 
 interface Props {
   sessionId: string;
+}
+
+function requireCreatedResearch(
+  data: ResearchProposalResponse,
+): asserts data is ResearchProposalResponse & {
+  session_id: string;
+  proposal: ResearchProposal;
+} {
+  if (!data.session_id || !data.proposal) {
+    throw new Error("invalid_research_response");
+  }
 }
 
 export function SessionView({ sessionId }: Props) {
@@ -108,15 +121,7 @@ export function SessionView({ sessionId }: Props) {
         return;
       }
 
-      fetch("/api/research", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic, language: "auto" }),
-      })
-        .then((res) => {
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          return res.json();
-        })
+      createResearch(topic)
         .then((data) => {
           if (data.similar_topic) {
             setSimilarTopic(data.similar_topic);
@@ -124,6 +129,7 @@ export function SessionView({ sessionId }: Props) {
             return;
           }
 
+          requireCreatedResearch(data);
           const sid: string = data.session_id;
           setRealSessionId(sid);
           setProposal(data.proposal);
@@ -147,12 +153,8 @@ export function SessionView({ sessionId }: Props) {
     }
 
     // Existing session -- fetch status
-    fetch(`/api/research/${sessionId}/status`)
-      .then((res) => {
-        if (!res.ok) throw new Error("not_found");
-        return res.json();
-      })
-      .then((data: { status: string; proposal: ResearchProposal }) => {
+    fetchResearchStatus(sessionId)
+      .then((data) => {
         setProposal(data.proposal);
 
         if (data.status === "proposal_ready") {
@@ -222,16 +224,9 @@ export function SessionView({ sessionId }: Props) {
   function handleViewSimilar() {
     if (!similarTopic || isNavigating) return;
     setIsNavigating(true);
-    fetch("/api/research", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ topic: similarTopic.topic, language: "auto" }),
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
+    createResearch(similarTopic.topic)
       .then((data) => {
+        requireCreatedResearch(data);
         const sid: string = data.session_id;
         setRealSessionId(sid);
         setProposal(data.proposal);
@@ -258,16 +253,9 @@ export function SessionView({ sessionId }: Props) {
     if (!topic || isNavigating) return;
     setIsNavigating(true);
     setPhase("loading");
-    fetch("/api/research", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ topic, language: "auto", force: true }),
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
+    createResearch(topic, { force: true })
       .then((data) => {
+        requireCreatedResearch(data);
         const sid: string = data.session_id;
         setRealSessionId(sid);
         setProposal(data.proposal);
