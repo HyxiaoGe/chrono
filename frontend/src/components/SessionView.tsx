@@ -3,17 +3,13 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type {
+  CompleteData,
   ResearchProposal,
   SimilarTopicMatch,
-  TimelineNode,
-  SynthesisData,
-  CompleteData,
-  ProgressData,
-  SkeletonNodeData,
-  NodeDetailEvent,
 } from "@/types";
 import { useLocale } from "@/data/landing";
 import { useResearchStream } from "@/hooks/useResearchStream";
+import { useResearchEventsReducer } from "@/hooks/useResearchEventsReducer";
 import { useConnections } from "@/hooks/useConnections";
 import { useActiveNode } from "@/hooks/useActiveNode";
 import { AppShell } from "./AppShell";
@@ -70,9 +66,18 @@ export function SessionView({ sessionId }: Props) {
   );
 
   const [streamSessionId, setStreamSessionId] = useState<string | null>(null);
-  const [nodes, setNodes] = useState<TimelineNode[]>([]);
-  const [synthesisData, setSynthesisData] = useState<SynthesisData | null>(null);
-  const [completeData, setCompleteData] = useState<CompleteData | null>(null);
+  const {
+    nodes,
+    synthesisData,
+    completeData,
+    researchPhase,
+    researchModel,
+    onProgress,
+    onSkeleton,
+    onNodeDetail,
+    onSynthesis,
+    onComplete,
+  } = useResearchEventsReducer();
 
   const [similarTopic, setSimilarTopic] = useState<SimilarTopicMatch | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
@@ -86,8 +91,6 @@ export function SessionView({ sessionId }: Props) {
     viewportHeight: 1,
   });
 
-  const [researchPhase, setResearchPhase] = useState<string>("");
-  const [researchModel, setResearchModel] = useState<string>("");
   const [researchStartTime] = useState<number>(Date.now());
 
   // --- Init ---
@@ -292,79 +295,14 @@ export function SessionView({ sessionId }: Props) {
 
   // --- SSE ---
   useResearchStream(streamSessionId, {
-    onProgress: useCallback((data: ProgressData) => {
-      setResearchPhase(data.phase);
-      if (data.model) setResearchModel(data.model);
-      if (data.phase === "detail") {
-        setNodes((prev) =>
-          prev.map((n) =>
-            n.status === "skeleton" ? { ...n, status: "loading" as const } : n,
-          ),
-        );
-      }
-    }, []),
-
-    onSkeleton: useCallback(
-      ({
-        nodes: skeletonNodes,
-        partial,
-      }: {
-        nodes: SkeletonNodeData[];
-        partial?: boolean;
-      }) => {
-        if (partial) {
-          setNodes((prev) => {
-            const incoming = skeletonNodes.map((n) => ({
-              ...n,
-              status: n.status,
-            }));
-            const merged = [...prev, ...incoming];
-            merged.sort((a, b) => a.date.localeCompare(b.date));
-            return merged;
-          });
-        } else {
-          setNodes((prev) => {
-            const existingMap = new Map(prev.map((n) => [n.id, n]));
-            return skeletonNodes.map((n) => {
-              const existing = existingMap.get(n.id);
-              if (existing?.details) {
-                return {
-                  ...n,
-                  status: n.status,
-                  details: n.details ?? existing.details,
-                };
-              }
-              return { ...n, status: n.status };
-            });
-          });
-        }
-      },
-      [],
-    ),
-
-    onNodeDetail: useCallback(({ node_id, details }: NodeDetailEvent) => {
-      setNodes((prev) =>
-        prev.map((n) =>
-          n.id === node_id
-            ? {
-                ...n,
-                details,
-                status: "complete" as const,
-                sources: [...n.sources, ...details.sources],
-              }
-            : n,
-        ),
-      );
-    }, []),
-
-    onSynthesis: useCallback((data: SynthesisData) => {
-      setSynthesisData(data);
-    }, []),
-
+    onProgress,
+    onSkeleton,
+    onNodeDetail,
+    onSynthesis,
     onComplete: useCallback((data: CompleteData) => {
-      setCompleteData(data);
+      onComplete(data);
       clearActiveSession();
-    }, []),
+    }, [onComplete]),
 
     onResearchError: useCallback((data: { error: string; message: string }) => {
       setError(data.message);
