@@ -46,6 +46,7 @@ export const demoData: Record<Locale, DemoData> = {
           estimated_nodes: 1,
         },
       ],
+      research_phases: [],
       estimated_duration: { min_seconds: 60, max_seconds: 120 },
       credits_cost: 1,
       user_facing: {
@@ -302,6 +303,7 @@ export const demoData: Record<Locale, DemoData> = {
           estimated_nodes: 1,
         },
       ],
+      research_phases: [],
       estimated_duration: { min_seconds: 60, max_seconds: 120 },
       credits_cost: 1,
       user_facing: {

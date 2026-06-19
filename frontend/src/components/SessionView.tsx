@@ -316,7 +316,7 @@ export function SessionView({ sessionId }: Props) {
           setNodes((prev) => {
             const incoming = skeletonNodes.map((n) => ({
               ...n,
-              status: "skeleton" as const,
+              status: n.status,
             }));
             const merged = [...prev, ...incoming];
             merged.sort((a, b) => a.date.localeCompare(b.date));
@@ -328,9 +328,13 @@ export function SessionView({ sessionId }: Props) {
             return skeletonNodes.map((n) => {
               const existing = existingMap.get(n.id);
               if (existing?.details) {
-                return { ...n, status: existing.status, details: existing.details };
+                return {
+                  ...n,
+                  status: n.status,
+                  details: n.details ?? existing.details,
+                };
               }
-              return { ...n, status: "skeleton" as const };
+              return { ...n, status: n.status };
             });
           });
         }

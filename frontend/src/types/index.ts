@@ -11,12 +11,8 @@ export interface ResearchProposal {
     estimated_total_nodes: number;
     reasoning: string;
   };
-  research_threads: {
-    name: string;
-    description: string;
-    priority: number;
-    estimated_nodes: number;
-  }[];
+  research_threads: ResearchThread[];
+  research_phases: ResearchPhase[];
   estimated_duration: {
     min_seconds: number;
     max_seconds: number;
@@ -29,6 +25,20 @@ export interface ResearchProposal {
     credits_text: string;
     thread_names: string[];
   };
+}
+
+export interface ResearchThread {
+  name: string;
+  description: string;
+  priority: number;
+  estimated_nodes: number;
+}
+
+export interface ResearchPhase {
+  name: string;
+  time_range: string;
+  description: string;
+  threads: ResearchThread[];
 }
 
 export interface SimilarTopicMatch {
@@ -66,8 +76,10 @@ export interface SkeletonNodeData {
   significance: "revolutionary" | "high" | "medium";
   description: string;
   sources: string[];
-  status: "skeleton";
+  status: NodeStatus;
+  details?: NodeDetailData;
   phase_name?: string;
+  is_gap_node?: boolean;
 }
 
 export interface NodeDetailData {
@@ -131,6 +143,7 @@ export interface TimelineNode {
   status: NodeStatus;
   details?: NodeDetailData;
   phase_name?: string;
+  is_gap_node?: boolean;
 }
 
 export type AppPhase = "input" | "proposal" | "research";
@@ -147,4 +160,3 @@ export interface ResearchSummary {
   timeline_span: string;
   key_insight: string;
 }
-
