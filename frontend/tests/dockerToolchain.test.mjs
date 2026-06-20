@@ -19,6 +19,10 @@ describe("frontend Docker toolchain", () => {
       "node:22-alpine",
       "node:22-alpine",
     ]);
+    assert.match(
+      dockerfile,
+      /^COPY package\.json pnpm-lock\.yaml pnpm-workspace\.yaml \.\/$/m,
+    );
     assert.match(packageJson.packageManager, /^pnpm@\d+\.\d+\.\d+$/);
     assert.match(workspaceSource, /^onlyBuiltDependencies:/m);
     assert.doesNotMatch(workspaceSource, /^ignoredBuiltDependencies:/m);
