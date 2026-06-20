@@ -24,9 +24,11 @@ describe("frontend Docker toolchain", () => {
       /^COPY package\.json pnpm-lock\.yaml pnpm-workspace\.yaml \.\/$/m,
     );
     assert.match(packageJson.packageManager, /^pnpm@\d+\.\d+\.\d+$/);
-    assert.match(workspaceSource, /^onlyBuiltDependencies:/m);
+    assert.equal(packageJson.pnpm, undefined);
+    assert.match(workspaceSource, /^allowBuilds:/m);
+    assert.match(workspaceSource, /^\s+sharp: true$/m);
+    assert.match(workspaceSource, /^\s+unrs-resolver: true$/m);
+    assert.doesNotMatch(workspaceSource, /^onlyBuiltDependencies:/m);
     assert.doesNotMatch(workspaceSource, /^ignoredBuiltDependencies:/m);
-    assert.match(workspaceSource, /^\s+- sharp$/m);
-    assert.match(workspaceSource, /^\s+- unrs-resolver$/m);
   });
 });

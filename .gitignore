@@ -1,5 +1,6 @@
 .DS_Store
 plans/
+.pnpm-store/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
