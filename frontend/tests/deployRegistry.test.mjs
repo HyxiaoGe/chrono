@@ -26,7 +26,7 @@ describe("deploy registry configuration", () => {
     assert.match(workflow, /docker push "\$FRONTEND_IMAGE"/);
   });
 
-  it("deploys pulled ACR images instead of rebuilding on the dev host", async () => {
+  it("deploys published ACR-tagged images without rebuilding on the dev host", async () => {
     const [compose, workflow] = await Promise.all([
       readFile(new URL("docker-compose.yml", repoRoot), "utf8"),
       readFile(new URL(".github/workflows/deploy.yml", repoRoot), "utf8"),
@@ -37,7 +37,7 @@ describe("deploy registry configuration", () => {
     assert.doesNotMatch(compose, /\.\.?\s*\/backend:\/app/);
     assert.match(workflow, /CHRONO_BACKEND_IMAGE="\$BACKEND_IMAGE"/);
     assert.match(workflow, /CHRONO_FRONTEND_IMAGE="\$FRONTEND_IMAGE"/);
-    assert.match(workflow, /docker compose pull backend frontend/);
+    assert.doesNotMatch(workflow, /docker compose pull/);
     assert.match(workflow, /docker compose up -d --no-build backend frontend/);
     assert.doesNotMatch(workflow, /docker compose up -d --build/);
   });

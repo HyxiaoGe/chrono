@@ -73,7 +73,7 @@ jobs:
             echo "FRONTEND_IMAGE=$FRONTEND_IMAGE"
           } >> "$GITHUB_ENV"
 
-      - name: Deploy pulled images
+      - name: Deploy published images
         env:
           ACR_PASSWORD: ${{ secrets.ALIYUN_ACR_PASSWORD }}
         run: |
@@ -92,7 +92,6 @@ jobs:
           export CHRONO_BACKEND_IMAGE="$BACKEND_IMAGE"
           export CHRONO_FRONTEND_IMAGE="$FRONTEND_IMAGE"
 
-          docker compose pull backend frontend
           docker compose up -d --no-build backend frontend
           docker image prune -f
 
