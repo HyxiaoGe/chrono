@@ -1,24 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { Cpu, Landmark, Globe, Atom, type LucideIcon } from "lucide-react";
 import type { Locale } from "@/data/landing";
 import { messages } from "@/data/landing";
-
-interface Topic {
-  title: string | Record<string, string>;
-  subtitle: string | Record<string, string>;
-  complexity: string;
-  estimated_nodes: number;
-  cached?: boolean;
-}
-
-interface Category {
-  id: string;
-  icon: string;
-  label: string | Record<string, string>;
-  topics: Topic[];
-}
+import { fetchRecommendedTopics, type RecommendedCategory } from "@/api/research";
+import { areSearchSectionPropsEqual } from "@/utils/searchSectionMemo";
 
 function str(value: string | Record<string, string>, locale: Locale): string {
   if (typeof value === "string") return value;
@@ -52,30 +39,31 @@ const LEVEL_BORDER: Record<string, string> = {
   epic: "border-l-chrono-level-epic",
 };
 
-export function RecommendedTopics({ onSelectTopic, locale, disabled }: Props) {
-  const [categories, setCategories] = useState<Category[]>([]);
+function RecommendedTopicsComponent({ onSelectTopic, locale, disabled }: Props) {
+  const [categories, setCategories] = useState<RecommendedCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(0);
-  const [fetchedLocale, setFetchedLocale] = useState<Locale | null>(null);
   const t = messages[locale].app;
 
   useEffect(() => {
-    if (fetchedLocale === locale) return;
-    fetch(`/api/topics/recommended?locale=${locale}`)
-      .then((r) => {
-        if (!r.ok) throw new Error();
-        return r.json();
-      })
-      .then((data: Category[]) => {
+    let cancelled = false;
+
+    fetchRecommendedTopics(locale)
+      .then((data) => {
+        if (cancelled) return;
         setCategories(data);
         setActiveTab(0);
-        setFetchedLocale(locale);
         setLoading(false);
       })
       .catch(() => {
+        if (cancelled) return;
         setLoading(false);
       });
-  }, [locale, fetchedLocale]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [locale]);
 
   if (loading) {
     return (
@@ -175,3 +163,8 @@ export function RecommendedTopics({ onSelectTopic, locale, disabled }: Props) {
     </div>
   );
 }
+
+export const RecommendedTopics = memo(
+  RecommendedTopicsComponent,
+  areSearchSectionPropsEqual,
+);

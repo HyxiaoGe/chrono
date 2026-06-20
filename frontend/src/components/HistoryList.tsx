@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import type { ResearchSummary } from "@/types";
 import type { Locale } from "@/data/landing";
 import { messages } from "@/data/landing";
+import { fetchResearches } from "@/api/research";
+import { deriveHistorySections } from "@/utils/historySections";
+import { areSearchSectionPropsEqual } from "@/utils/searchSectionMemo";
 
 interface Props {
   onSelectTopic: (topic: string) => void;
@@ -52,16 +55,6 @@ function formatRelativeTime(isoDate: string, locale: Locale): string {
   if (days < 30) return `${days}d ${t.ago}`;
   const months = Math.floor(days / 30);
   return `${months}mo ${t.ago}`;
-}
-
-function groupByType(items: ResearchSummary[]) {
-  const tech = items.filter(
-    (i) => i.topic_type === "product" || i.topic_type === "technology",
-  );
-  const history = items.filter(
-    (i) => i.topic_type === "historical_event" || i.topic_type === "culture",
-  );
-  return { tech, history };
 }
 
 function HistoryRow({
@@ -152,32 +145,38 @@ function HistoryGroup({
   );
 }
 
-export function HistoryList({ onSelectTopic, locale, disabled }: Props) {
+function HistoryListComponent({ onSelectTopic, locale, disabled }: Props) {
   const [items, setItems] = useState<ResearchSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const t = messages[locale].app;
 
-  const [fetchedLocale, setFetchedLocale] = useState<Locale | null>(null);
-
   useEffect(() => {
-    if (fetchedLocale === locale) return;
-    fetch(`/api/researches?locale=${locale}`)
-      .then((r) => {
-        if (!r.ok) throw new Error();
-        return r.json();
-      })
-      .then((data: ResearchSummary[]) => {
+    let cancelled = false;
+
+    fetchResearches(locale)
+      .then((data) => {
+        if (cancelled) return;
         setItems(data);
-        setFetchedLocale(locale);
+        setError(false);
         setLoading(false);
       })
       .catch(() => {
+        if (cancelled) return;
         setError(true);
         setLoading(false);
       });
-  }, [locale, fetchedLocale]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [locale]);
+
+  const historySections = useMemo(
+    () => deriveHistorySections(items, { expanded }),
+    [expanded, items],
+  );
 
   if (error) return null;
   if (!loading && items.length === 0) {
@@ -210,23 +209,22 @@ export function HistoryList({ onSelectTopic, locale, disabled }: Props) {
     );
   }
 
-  if (items.length > 6) {
-    const { tech, history } = groupByType(items);
+  if (historySections.mode === "grouped") {
     return (
       <div className="w-full max-w-4xl mt-10 space-y-6">
-        {tech.length > 0 && (
+        {historySections.tech.length > 0 && (
           <HistoryGroup
             title={t.groupTech}
-            items={tech}
+            items={historySections.tech}
             onSelectTopic={onSelectTopic}
             locale={locale}
             disabled={disabled}
           />
         )}
-        {history.length > 0 && (
+        {historySections.history.length > 0 && (
           <HistoryGroup
             title={t.groupHistory}
-            items={history}
+            items={historySections.history}
             onSelectTopic={onSelectTopic}
             locale={locale}
             disabled={disabled}
@@ -236,19 +234,16 @@ export function HistoryList({ onSelectTopic, locale, disabled }: Props) {
     );
   }
 
-  const displayItems = expanded ? items : items.slice(0, 5);
-  const hasMore = items.length > 5;
-
   return (
     <div className="w-full max-w-4xl mt-10">
       <HistoryGroup
         title={t.recent}
-        items={displayItems}
+        items={historySections.items}
         onSelectTopic={onSelectTopic}
         locale={locale}
         disabled={disabled}
       />
-      {hasMore && !expanded && (
+      {historySections.hasMore && !expanded && (
         <button
           onClick={() => setExpanded(true)}
           className="mt-2 text-chrono-caption text-chrono-text-muted hover:text-chrono-accent transition-colors cursor-pointer"
@@ -259,3 +254,5 @@ export function HistoryList({ onSelectTopic, locale, disabled }: Props) {
     </div>
   );
 }
+
+export const HistoryList = memo(HistoryListComponent, areSearchSectionPropsEqual);

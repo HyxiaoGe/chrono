@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { beforeEach, describe, it } from "node:test";
 import {
   ResearchApiError,
+  clearResearchApiCache,
   createResearch,
+  fetchRecommendedTopics,
+  fetchResearches,
   fetchResearchStatus,
 } from "../src/api/research.ts";
 
@@ -16,6 +19,10 @@ function jsonResponse(data, overrides = {}) {
 }
 
 describe("research API client", () => {
+  beforeEach(() => {
+    clearResearchApiCache();
+  });
+
   it("creates research with the expected request payload", async () => {
     const calls = [];
     const fetcher = async (url, init) => {
@@ -80,5 +87,90 @@ describe("research API client", () => {
         return true;
       },
     );
+  });
+
+  it("deduplicates in-flight research list requests by locale and limit", async () => {
+    const calls = [];
+    let resolveResponse;
+    const responsePromise = new Promise((resolve) => {
+      resolveResponse = resolve;
+    });
+    const fetcher = async (url, init) => {
+      calls.push({ url, init });
+      return responsePromise;
+    };
+
+    const first = fetchResearches("zh", { fetcher, limit: 12 });
+    const second = fetchResearches("zh", { fetcher, limit: 12 });
+
+    assert.equal(calls.length, 1);
+    assert.deepEqual(calls[0], {
+      url: "/api/researches?locale=zh&limit=12",
+      init: undefined,
+    });
+
+    resolveResponse(jsonResponse([{ id: "r1", topic: "iPhone" }]));
+
+    assert.equal(await first, await second);
+    assert.deepEqual(await first, [{ id: "r1", topic: "iPhone" }]);
+  });
+
+  it("reuses resolved recommended topic responses and supports refresh", async () => {
+    const calls = [];
+    const fetcher = async (url, init) => {
+      calls.push({ url, init });
+      return jsonResponse([{ id: `call-${calls.length}`, topics: [] }]);
+    };
+
+    const first = await fetchRecommendedTopics("en", { fetcher });
+    const second = await fetchRecommendedTopics("en", { fetcher });
+    const refreshed = await fetchRecommendedTopics("en", { fetcher, force: true });
+
+    assert.equal(calls.length, 2);
+    assert.deepEqual(calls[0], {
+      url: "/api/topics/recommended?locale=en",
+      init: undefined,
+    });
+    assert.deepEqual(first, [{ id: "call-1", topics: [] }]);
+    assert.equal(first, second);
+    assert.deepEqual(refreshed, [{ id: "call-2", topics: [] }]);
+  });
+
+  it("does not cache failed list requests", async () => {
+    let calls = 0;
+    const fetcher = async () => {
+      calls += 1;
+      return jsonResponse([], { ok: false, status: 500 });
+    };
+
+    await assert.rejects(fetchResearches("en", { fetcher }));
+    await assert.rejects(fetchResearches("en", { fetcher }));
+
+    assert.equal(calls, 2);
+  });
+
+  it("invalidates cached home data after creating research", async () => {
+    const calls = [];
+    const fetcher = async (url, init) => {
+      calls.push({ url, init });
+      if (url === "/api/research") {
+        return jsonResponse({ session_id: "rs_new", cached: false });
+      }
+      if (String(url).startsWith("/api/researches")) {
+        return jsonResponse([{ id: `history-${calls.length}` }]);
+      }
+      return jsonResponse([{ id: `recommended-${calls.length}`, topics: [] }]);
+    };
+
+    const historyBefore = await fetchResearches("en", { fetcher });
+    const recommendedBefore = await fetchRecommendedTopics("en", { fetcher });
+    await createResearch("iPhone history", { fetcher });
+    const historyAfter = await fetchResearches("en", { fetcher });
+    const recommendedAfter = await fetchRecommendedTopics("en", { fetcher });
+
+    assert.deepEqual(historyBefore, [{ id: "history-1" }]);
+    assert.deepEqual(recommendedBefore, [{ id: "recommended-2", topics: [] }]);
+    assert.deepEqual(historyAfter, [{ id: "history-4" }]);
+    assert.deepEqual(recommendedAfter, [{ id: "recommended-5", topics: [] }]);
   });
 });
