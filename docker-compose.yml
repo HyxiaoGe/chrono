@@ -1,5 +1,6 @@
 services:
   backend:
+    image: ${CHRONO_BACKEND_IMAGE:-chrono-backend:local}
     build:
       context: ./backend
     container_name: chrono-backend
@@ -9,8 +10,6 @@ services:
       - ./backend/.env
     environment:
       - ENABLE_DOCS=false
-    volumes:
-      - ./backend:/app
     restart: unless-stopped
     mem_limit: 256m
     networks:
@@ -18,6 +17,7 @@ services:
       - litellm_net
 
   frontend:
+    image: ${CHRONO_FRONTEND_IMAGE:-chrono-frontend:local}
     build:
       context: ./frontend
       args:
