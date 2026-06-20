@@ -11,7 +11,7 @@ from sse_starlette import EventSourceResponse
 from app.db.database import async_session_factory
 from app.db.redis import get_session_data, update_session_status
 from app.db.replay import replay_research
-from app.db.repository import get_research_by_topic
+from app.db.repository import get_research_id_by_topic
 from app.models.research import ResearchProposal
 from app.models.session import ResearchSession, SessionManager, SessionStatus
 
@@ -129,9 +129,7 @@ class SessionLifecycleService:
         if research_id is None and async_session_factory is not None:
             try:
                 async with async_session_factory() as db:
-                    cached = await get_research_by_topic(db, topic)
-                if cached is not None:
-                    research_id = cached.id
+                    research_id = await get_research_id_by_topic(db, topic)
             except Exception:
                 logger.warning("Failed to reconcile cached research by topic", exc_info=True)
 

@@ -4,7 +4,7 @@ import os
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
@@ -18,7 +18,12 @@ from app.db.redis import (
     get_redis,
     store_session,
 )
-from app.db.repository import get_research_by_topic, list_researches, list_topic_candidates
+from app.db.repository import (
+    get_cached_research_proposal_by_topic,
+    list_cached_topic_normalized,
+    list_researches,
+    list_topic_candidates,
+)
 from app.models.research import (
     ErrorResponse,
     ResearchProposal,
@@ -96,13 +101,14 @@ async def health_check() -> JSONResponse:
 
 
 @app.get("/api/researches")
-async def list_researches_endpoint(locale: str | None = None):
+async def list_researches_endpoint(
+    locale: str | None = None,
+    limit: int = Query(50, ge=1, le=100),
+):
     if async_session_factory is None:
         return []
     async with async_session_factory() as db:
-        rows = await list_researches(db)
-    if locale:
-        rows = [r for r in rows if (r.language or "").startswith(locale)]
+        rows = await list_researches(db, locale=locale, limit=limit)
     return [
         {
             "id": str(row.id),
@@ -113,8 +119,8 @@ async def list_researches_endpoint(locale: str | None = None):
             "total_nodes": row.total_nodes,
             "source_count": row.source_count,
             "created_at": row.created_at.isoformat(),
-            "timeline_span": row.synthesis.get("timeline_span", "") if row.synthesis else "",
-            "key_insight": row.synthesis.get("key_insight", "") if row.synthesis else "",
+            "timeline_span": row.timeline_span or "",
+            "key_insight": row.key_insight or "",
         }
         for row in rows
     ]
@@ -124,12 +130,16 @@ async def list_researches_endpoint(locale: str | None = None):
 async def get_recommended_topics(locale: str = "en") -> list[dict]:
     lang = locale if locale in RECOMMENDED_TOPICS else "en"
     categories = copy.deepcopy(RECOMMENDED_TOPICS[lang])
+    candidate_topics = {
+        normalize_topic(topic["title"]) for category in categories for topic in category["topics"]
+    }
     cached_set: set[str] = set()
     if async_session_factory is not None:
         try:
             async with async_session_factory() as db:
-                rows = await list_researches(db)
-            cached_set = {normalize_topic(r.topic) for r in rows}
+                cached_set = set(
+                    await list_cached_topic_normalized(db, candidates=candidate_topics)
+                )
         except Exception:
             pass
     for cat in categories:
@@ -152,7 +162,7 @@ async def create_research(request: ResearchRequest) -> ResearchProposalResponse:
     if async_session_factory is not None:
         try:
             async with async_session_factory() as db:
-                db_cached = await get_research_by_topic(db, request.topic)
+                db_cached = await get_cached_research_proposal_by_topic(db, request.topic)
             if db_cached:
                 proposal = ResearchProposal.model_validate(db_cached.proposal)
                 session_manager.create(

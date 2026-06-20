@@ -20,17 +20,18 @@ async def replay_research(session: ResearchSession, research_id: uuid.UUID) -> N
 
 
 async def _load_research_snapshot(research_id: uuid.UUID) -> tuple[Any, list[Any]]:
-    from sqlalchemy import select
-
     from app.db.database import async_session_factory
-    from app.db.models import ResearchRow
-    from app.db.repository import get_nodes_for_research
+    from app.db.repository import (
+        get_nodes_for_research_replay,
+        get_research_replay_metadata,
+    )
 
     assert async_session_factory is not None
     async with async_session_factory() as db:
-        result = await db.execute(select(ResearchRow).where(ResearchRow.id == research_id))
-        research = result.scalar_one()
-        node_rows = await get_nodes_for_research(db, research_id)
+        research = await get_research_replay_metadata(db, research_id)
+        node_rows = await get_nodes_for_research_replay(db, research_id)
+    if research is None:
+        raise LookupError(f"Research not found: {research_id}")
 
     return research, node_rows
 
