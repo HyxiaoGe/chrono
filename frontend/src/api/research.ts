@@ -128,6 +128,16 @@ export async function fetchResearchStatus(
   return readJson<ResearchStatusResponse>(response);
 }
 
+export async function createReplaySession(
+  researchId: string,
+  { fetcher = fetch }: ResearchRequestOptions = {},
+): Promise<ResearchProposalResponse> {
+  const response = await fetcher(`/api/researches/${researchId}/replay`, {
+    method: "POST",
+  });
+  return readJson<ResearchProposalResponse>(response);
+}
+
 export function fetchResearches(
   locale: string,
   { limit = 50, ...options }: FetchResearchesOptions = {},

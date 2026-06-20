@@ -35,9 +35,15 @@ from app.models.session import SessionManager
 from app.orchestrator.orchestrator import Orchestrator
 from app.services.tavily import TavilyService
 from app.session.lifecycle import SessionLifecycleService
+from app.session.replay_session import create_replay_session_for_research
 from app.utils.topic import normalize_topic
 
 logger = logging.getLogger(__name__)
+RESEARCH_MAINTENANCE_ENABLED = True
+RESEARCH_MAINTENANCE_ERROR = ErrorResponse(
+    error="service_maintenance",
+    message="Chrono research is temporarily paused for maintenance.",
+)
 
 
 @asynccontextmanager
@@ -126,6 +132,16 @@ async def list_researches_endpoint(
     ]
 
 
+@app.post("/api/researches/{research_id}/replay", response_model=ResearchProposalResponse)
+async def create_research_replay_session(research_id: uuid.UUID) -> ResearchProposalResponse:
+    if RESEARCH_MAINTENANCE_ENABLED:
+        raise HTTPException(status_code=503, detail=RESEARCH_MAINTENANCE_ERROR.model_dump())
+    response = await create_replay_session_for_research(research_id, session_manager)
+    if response is None:
+        raise HTTPException(status_code=404, detail="Research not found")
+    return response
+
+
 @app.get("/api/topics/recommended")
 async def get_recommended_topics(locale: str = "en") -> list[dict]:
     lang = locale if locale in RECOMMENDED_TOPICS else "en"
@@ -155,6 +171,8 @@ async def get_recommended_topics(locale: str = "en") -> list[dict]:
     responses={502: {"model": ErrorResponse}},
 )
 async def create_research(request: ResearchRequest) -> ResearchProposalResponse:
+    if RESEARCH_MAINTENANCE_ENABLED:
+        raise HTTPException(status_code=503, detail=RESEARCH_MAINTENANCE_ERROR.model_dump())
     session_id = str(uuid.uuid4())
     normalized = normalize_topic(request.topic)
 

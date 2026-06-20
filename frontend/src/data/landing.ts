@@ -60,6 +60,8 @@ interface LandingMessages {
     placeholder: string;
     research: string;
     analyzing: string;
+    maintenanceNotice: string;
+    maintenanceAction: string;
     recent: string;
     ago: string;
     nodes: string;
@@ -146,6 +148,8 @@ export const messages: Record<Locale, LandingMessages> = {
       placeholder: "iPhone, \u6bd4\u7279\u5e01, Cold War...",
       research: "Research",
       analyzing: "Analyzing...",
+      maintenanceNotice: "Chrono research is temporarily paused for maintenance.",
+      maintenanceAction: "Maintenance",
       recent: "Recent",
       ago: "ago",
       nodes: "nodes",
@@ -232,6 +236,8 @@ export const messages: Record<Locale, LandingMessages> = {
       placeholder: "iPhone\u3001\u6bd4\u7279\u5e01\u3001\u4e8c\u6218...",
       research: "\u5f00\u59cb\u8c03\u7814",
       analyzing: "\u5206\u6790\u4e2d...",
+      maintenanceNotice: "Chrono \u8c03\u7814\u529f\u80fd\u6682\u65f6\u7ef4\u62a4\u4e2d\u3002",
+      maintenanceAction: "\u7ef4\u62a4\u4e2d",
       recent: "\u6700\u8fd1\u7684\u8c03\u7814",
       ago: "\u524d",
       nodes: "\u4e2a\u8282\u70b9",

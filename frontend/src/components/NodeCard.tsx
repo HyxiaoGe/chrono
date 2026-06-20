@@ -51,7 +51,6 @@ function NodeCard({
         onClick={() => onClick(node.id)}
         onMouseEnter={() => onHover(node.id)}
         onMouseLeave={() => onHover(null)}
-        data-node-id={node.id}
         className={`${base} ${dimClass} ${relatedRing} ${selRing} rounded-xl border p-5 shadow-md`}
         style={{
           background: "linear-gradient(180deg, #27272a 0%, #18181b 100%)",
@@ -78,7 +77,6 @@ function NodeCard({
         onClick={() => onClick(node.id)}
         onMouseEnter={() => onHover(node.id)}
         onMouseLeave={() => onHover(null)}
-        data-node-id={node.id}
         className={`${base} ${dimClass} ${relatedRing} ${selRing} rounded-lg border p-4`}
         style={{
           backgroundColor: "rgba(24,24,27,0.7)",
@@ -102,7 +100,6 @@ function NodeCard({
       onClick={() => onClick(node.id)}
       onMouseEnter={() => onHover(node.id)}
       onMouseLeave={() => onHover(null)}
-      data-node-id={node.id}
       className={`${base} ${dimClass} ${relatedRing} ${selRing} rounded-md px-3.5 py-2.5`}
       style={{
         backgroundColor: "rgba(24,24,27,0.3)",

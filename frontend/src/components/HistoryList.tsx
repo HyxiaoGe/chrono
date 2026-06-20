@@ -9,7 +9,7 @@ import { deriveHistorySections } from "@/utils/historySections";
 import { areSearchSectionPropsEqual } from "@/utils/searchSectionMemo";
 
 interface Props {
-  onSelectTopic: (topic: string) => void;
+  onOpenResearch: (research: ResearchSummary) => void;
   locale: Locale;
   disabled?: boolean;
 }
@@ -59,12 +59,12 @@ function formatRelativeTime(isoDate: string, locale: Locale): string {
 
 function HistoryRow({
   item,
-  onSelectTopic,
+  onOpenResearch,
   locale,
   disabled,
 }: {
   item: ResearchSummary;
-  onSelectTopic: (topic: string) => void;
+  onOpenResearch: (research: ResearchSummary) => void;
   locale: Locale;
   disabled?: boolean;
 }) {
@@ -75,7 +75,7 @@ function HistoryRow({
     <button
       onClick={() => {
         if (disabled) return;
-        onSelectTopic(item.topic);
+        onOpenResearch(item);
       }}
       className={`group w-full text-left px-4 py-3 border-l-[3px] transition-colors
                   ${LEVEL_COLORS[item.complexity_level] || "border-l-chrono-border"}
@@ -115,13 +115,13 @@ function HistoryRow({
 function HistoryGroup({
   title,
   items,
-  onSelectTopic,
+  onOpenResearch,
   locale,
   disabled,
 }: {
   title: string;
   items: ResearchSummary[];
-  onSelectTopic: (topic: string) => void;
+  onOpenResearch: (research: ResearchSummary) => void;
   locale: Locale;
   disabled?: boolean;
 }) {
@@ -135,7 +135,7 @@ function HistoryGroup({
           <HistoryRow
             key={item.id}
             item={item}
-            onSelectTopic={onSelectTopic}
+            onOpenResearch={onOpenResearch}
             locale={locale}
             disabled={disabled}
           />
@@ -145,7 +145,11 @@ function HistoryGroup({
   );
 }
 
-function HistoryListComponent({ onSelectTopic, locale, disabled }: Props) {
+function HistoryListComponent({
+  onOpenResearch,
+  locale,
+  disabled,
+}: Props) {
   const [items, setItems] = useState<ResearchSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -216,7 +220,7 @@ function HistoryListComponent({ onSelectTopic, locale, disabled }: Props) {
           <HistoryGroup
             title={t.groupTech}
             items={historySections.tech}
-            onSelectTopic={onSelectTopic}
+            onOpenResearch={onOpenResearch}
             locale={locale}
             disabled={disabled}
           />
@@ -225,7 +229,7 @@ function HistoryListComponent({ onSelectTopic, locale, disabled }: Props) {
           <HistoryGroup
             title={t.groupHistory}
             items={historySections.history}
-            onSelectTopic={onSelectTopic}
+            onOpenResearch={onOpenResearch}
             locale={locale}
             disabled={disabled}
           />
@@ -239,7 +243,7 @@ function HistoryListComponent({ onSelectTopic, locale, disabled }: Props) {
       <HistoryGroup
         title={t.recent}
         items={historySections.items}
-        onSelectTopic={onSelectTopic}
+        onOpenResearch={onOpenResearch}
         locale={locale}
         disabled={disabled}
       />

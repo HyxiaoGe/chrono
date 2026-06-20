@@ -32,6 +32,7 @@ import SkeletonNode from "./SkeletonNode";
 import EraNavigator from "./EraNavigator";
 
 const ACTIVE_SESSION_KEY = "chrono-active-session";
+const NODE_ID_SEPARATOR = "\u001f";
 
 interface ActiveSession {
   sessionId: string;
@@ -343,7 +344,14 @@ export function SessionView({ sessionId }: Props) {
     );
   }, [completeData, completionElapsedSeconds]);
 
-  const nodeIds = useMemo(() => nodes.map((n) => n.id), [nodes]);
+  const nodeIdSignature = useMemo(
+    () => nodes.map((node) => node.id).join(NODE_ID_SEPARATOR),
+    [nodes],
+  );
+  const nodeIds = useMemo(
+    () => (nodeIdSignature ? nodeIdSignature.split(NODE_ID_SEPARATOR) : []),
+    [nodeIdSignature],
+  );
   const activeNodeId = useActiveNode(nodeIds);
   const sessionNodeState = useMemo(
     () => deriveSessionNodeState(nodes, { activeNodeId, selectedNodeId }),
@@ -452,7 +460,6 @@ export function SessionView({ sessionId }: Props) {
         topic={proposal?.topic ?? ""}
         nodeCount={nodes.length}
         onBack={handleNewResearch}
-        language={language}
       />
 
       <main className="mx-auto max-w-[1440px] px-6 pt-0 pb-16">

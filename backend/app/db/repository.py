@@ -75,6 +75,12 @@ async def get_cached_research_proposal_by_topic(session: AsyncSession, topic: st
     return result.first()
 
 
+async def get_cached_research_proposal_by_id(session: AsyncSession, research_id: uuid.UUID):
+    stmt = select(ResearchRow.id, ResearchRow.proposal).where(ResearchRow.id == research_id)
+    result = await session.execute(stmt)
+    return result.first()
+
+
 async def list_topic_candidates(
     session: AsyncSession, limit: int = 50
 ) -> list[tuple[str, str, uuid.UUID]]:

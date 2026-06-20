@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState, useMemo, useLayoutEffect, useRef } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import type { TimelineNode, TimelineConnection } from "@/types";
 import NodeCard from "@/components/NodeCard";
 import AxisDot from "@/components/AxisDot";
@@ -36,6 +36,15 @@ type Row = SepRow | NodeRow;
 
 const EMPTY_RELATED_IDS = new Set<string>();
 const EMPTY_INDEXED_CONNECTIONS: IndexedTimelineConnection[] = [];
+const NODE_ID_SEPARATOR = "\u001f";
+
+function getNodeIdSignature(nodes: TimelineNode[]): string {
+  return nodes.map((node) => node.id).join(NODE_ID_SEPARATOR);
+}
+
+function getNodeIdsFromSignature(signature: string): string[] {
+  return signature ? signature.split(NODE_ID_SEPARATOR) : [];
+}
 
 function TimelineComponent({
   nodes,
@@ -50,21 +59,29 @@ function TimelineComponent({
     containerHeight: 0,
   });
   const innerRef = useRef<HTMLDivElement>(null);
+  const nodeIdSignature = useMemo(() => getNodeIdSignature(nodes), [nodes]);
+  const nodeIds = useMemo(
+    () => getNodeIdsFromSignature(nodeIdSignature),
+    [nodeIdSignature],
+  );
 
   // Measure node vertical positions for SVG connection overlay
-  useLayoutEffect(() => {
+  useEffect(() => {
+    let frameId: number | null = null;
+
     const measure = () => {
+      frameId = null;
       const inner = innerRef.current;
       if (!inner) return;
       const rect = inner.getBoundingClientRect();
       const pos: Record<string, { top: number }> = {};
-      nodes.forEach((n) => {
+      nodeIds.forEach((id) => {
         const el = inner.querySelector<HTMLElement>(
-          `[data-node-id="${n.id}"]`,
+          `[data-node-id="${id}"]`,
         );
         if (el) {
           const er = el.getBoundingClientRect();
-          pos[n.id] = { top: er.top - rect.top + er.height / 2 };
+          pos[id] = { top: er.top - rect.top + er.height / 2 };
         }
       });
       setMeasurement((current) =>
@@ -75,15 +92,23 @@ function TimelineComponent({
       );
     };
 
-    measure();
-    const ro = new ResizeObserver(measure);
-    if (innerRef.current) ro.observe(innerRef.current);
-    window.addEventListener("resize", measure);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", measure);
+    const scheduleMeasure = () => {
+      if (frameId !== null) return;
+      frameId = requestAnimationFrame(measure);
     };
-  }, [nodes]);
+
+    scheduleMeasure();
+    const ro = new ResizeObserver(scheduleMeasure);
+    if (innerRef.current) ro.observe(innerRef.current);
+    window.addEventListener("resize", scheduleMeasure);
+    return () => {
+      if (frameId !== null) {
+        cancelAnimationFrame(frameId);
+      }
+      ro.disconnect();
+      window.removeEventListener("resize", scheduleMeasure);
+    };
+  }, [nodeIds]);
 
   // Build rows: year separators + alternating node cards
   const rows = useMemo<Row[]>(() => {

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Locale } from "@/data/landing";
 import { messages } from "@/data/landing";
+import type { ResearchSummary } from "@/types";
 import { HistoryList } from "./HistoryList";
 import { RecommendedTopics } from "./RecommendedTopics";
 
@@ -11,16 +12,27 @@ interface Props {
   isPending: boolean;
   error: string | null;
   onSelectTopic: (topic: string) => void;
+  onOpenResearch: (research: ResearchSummary) => void;
   locale: Locale;
+  maintenance?: boolean;
 }
 
-export function SearchInput({ onSearch, isPending, error, onSelectTopic, locale }: Props) {
+export function SearchInput({
+  onSearch,
+  isPending,
+  error,
+  onSelectTopic,
+  onOpenResearch,
+  locale,
+  maintenance = false,
+}: Props) {
   const [topic, setTopic] = useState("");
   const t = messages[locale].app;
+  const disabled = maintenance || isPending;
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!topic.trim() || isPending) return;
+    if (!topic.trim() || disabled) return;
     onSearch(topic.trim());
   }
 
@@ -38,7 +50,7 @@ export function SearchInput({ onSearch, isPending, error, onSelectTopic, locale 
           value={topic}
           onChange={(e) => setTopic(e.target.value)}
           placeholder={t.placeholder}
-          disabled={isPending}
+          disabled={disabled}
           autoFocus
           className="flex-1 rounded-lg border border-chrono-border bg-chrono-surface px-4 py-3
                      text-chrono-text placeholder-chrono-text-muted outline-none
@@ -46,19 +58,28 @@ export function SearchInput({ onSearch, isPending, error, onSelectTopic, locale 
         />
         <button
           type="submit"
-          disabled={isPending || !topic.trim()}
+          disabled={disabled || !topic.trim()}
           className="rounded-lg bg-chrono-text px-6 py-3 font-medium text-chrono-bg
                      hover:bg-chrono-text/90 disabled:opacity-40 transition-colors cursor-pointer
                      disabled:cursor-not-allowed"
         >
-          {isPending ? t.analyzing : t.research}
+          {maintenance ? t.maintenanceAction : isPending ? t.analyzing : t.research}
         </button>
       </form>
+      {maintenance && (
+        <p className="mt-4 text-sm text-chrono-text-muted">
+          {t.maintenanceNotice}
+        </p>
+      )}
       {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
 
-      <RecommendedTopics onSelectTopic={onSelectTopic} locale={locale} disabled={isPending} />
+      <RecommendedTopics onSelectTopic={onSelectTopic} locale={locale} disabled={disabled} />
       <div className="w-full max-w-4xl mt-10 border-t border-chrono-border/30" />
-      <HistoryList onSelectTopic={onSelectTopic} locale={locale} disabled={isPending} />
+      <HistoryList
+        onOpenResearch={onOpenResearch}
+        locale={locale}
+        disabled={disabled}
+      />
     </div>
   );
 }

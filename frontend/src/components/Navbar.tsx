@@ -82,9 +82,6 @@ export function Navbar({
 
         <div className="ml-auto flex items-center gap-2">
           <LanguageToggle locale={locale} onToggleLocale={onToggleLocale} />
-          <span className="hidden sm:inline text-chrono-caption text-chrono-text-muted hover:text-chrono-text-secondary px-2 py-1 transition-colors cursor-pointer">
-            {isZh ? "登录" : "Sign in"}
-          </span>
           <Link
             href="/app"
             className="rounded-md bg-chrono-accent px-3 py-1.5 text-chrono-caption font-medium text-chrono-bg hover:bg-chrono-accent/90 transition-colors"

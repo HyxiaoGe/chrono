@@ -3,6 +3,7 @@ import { beforeEach, describe, it } from "node:test";
 import {
   ResearchApiError,
   clearResearchApiCache,
+  createReplaySession,
   createResearch,
   fetchRecommendedTopics,
   fetchResearches,
@@ -84,6 +85,19 @@ describe("research API client", () => {
         assert.equal(error instanceof ResearchApiError, true);
         assert.equal(error.status, 503);
         assert.equal(error.message, "Research API request failed with status 503");
+        return true;
+      },
+    );
+  });
+
+  it("throws a typed error when replay creation is in maintenance", async () => {
+    const fetcher = async () => jsonResponse({}, { ok: false, status: 503 });
+
+    await assert.rejects(
+      createReplaySession("research-1", { fetcher }),
+      (error) => {
+        assert.equal(error instanceof ResearchApiError, true);
+        assert.equal(error.status, 503);
         return true;
       },
     );

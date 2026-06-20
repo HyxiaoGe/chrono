@@ -6,6 +6,7 @@ from typing import Any
 import pytest
 
 from app.db.repository import (
+    get_cached_research_proposal_by_id,
     get_cached_research_proposal_by_topic,
     get_nodes_for_research_replay,
     get_research_id_by_topic,
@@ -139,6 +140,19 @@ async def test_cached_research_proposal_lookup_selects_only_proposal_payload() -
     assert "researches.topic_normalized LIKE '%' || 'iphone' || '%'" in fuzzy_sql
     assert "researches.synthesis" not in exact_sql
     assert "researches.synthesis" not in fuzzy_sql
+
+
+@pytest.mark.asyncio
+async def test_cached_research_proposal_lookup_by_id_selects_only_proposal_payload() -> None:
+    session = CapturingSession()
+
+    await get_cached_research_proposal_by_id(session, RESEARCH_ID)
+
+    sql = compile_sql(session.statement)
+    assert selected_column_keys(session.statement) == {"id", "proposal"}
+    assert f"researches.id = {RESEARCH_ID_SQL}" in sql
+    assert "researches.synthesis" not in sql
+    assert "researches.topic" not in sql
 
 
 @pytest.mark.asyncio

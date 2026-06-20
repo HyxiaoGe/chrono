@@ -1,5 +1,8 @@
+import type { ResearchSummary } from "@/types";
+
 export interface SearchSectionMemoProps {
-  onSelectTopic: (topic: string) => void;
+  onSelectTopic?: (topic: string) => void;
+  onOpenResearch?: (research: ResearchSummary) => void;
   locale: string;
   disabled?: boolean;
 }
@@ -10,6 +13,7 @@ export function areSearchSectionPropsEqual(
 ): boolean {
   return (
     prev.onSelectTopic === next.onSelectTopic &&
+    prev.onOpenResearch === next.onOpenResearch &&
     prev.locale === next.locale &&
     prev.disabled === next.disabled
   );
