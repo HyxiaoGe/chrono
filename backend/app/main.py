@@ -134,8 +134,6 @@ async def list_researches_endpoint(
 
 @app.post("/api/researches/{research_id}/replay", response_model=ResearchProposalResponse)
 async def create_research_replay_session(research_id: uuid.UUID) -> ResearchProposalResponse:
-    if RESEARCH_MAINTENANCE_ENABLED:
-        raise HTTPException(status_code=503, detail=RESEARCH_MAINTENANCE_ERROR.model_dump())
     response = await create_replay_session_for_research(research_id, session_manager)
     if response is None:
         raise HTTPException(status_code=404, detail="Research not found")

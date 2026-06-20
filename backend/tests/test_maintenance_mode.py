@@ -14,6 +14,8 @@ os.environ["GAP_ANALYSIS_MODEL"] = "qwen/qwen-max"
 os.environ["SYNTHESIZER_MODEL"] = "qwen/qwen-max"
 
 from app import main
+from app.models.research import ResearchProposalResponse
+from tests.test_repository_queries import make_proposal
 
 
 async def _post(path: str, *, json: dict | None = None) -> httpx.Response:
@@ -46,25 +48,27 @@ async def test_create_research_returns_maintenance_without_running_research(monk
 
 
 @pytest.mark.asyncio
-async def test_create_replay_session_returns_maintenance_without_loading_research(
+async def test_create_replay_session_remains_available_for_read_only_history(
     monkeypatch,
 ) -> None:
-    async def fail_create_replay_session_for_research(_research_id, _session_manager):
-        raise AssertionError("maintenance mode must not create replay sessions")
+    async def fake_create_replay_session_for_research(_research_id, _session_manager):
+        return ResearchProposalResponse(
+            session_id="replay-session",
+            proposal=make_proposal(),
+            cached=True,
+        )
 
     monkeypatch.setattr(
         main,
         "create_replay_session_for_research",
-        fail_create_replay_session_for_research,
+        fake_create_replay_session_for_research,
     )
     research_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
 
     response = await _post(f"/api/researches/{research_id}/replay")
 
-    assert response.status_code == 503
-    assert response.json() == {
-        "detail": {
-            "error": "service_maintenance",
-            "message": "Chrono research is temporarily paused for maintenance.",
-        }
-    }
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["session_id"] == "replay-session"
+    assert payload["cached"] is True
+    assert payload["proposal"]["topic"] == "iPhone"

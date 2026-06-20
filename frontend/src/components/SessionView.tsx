@@ -9,11 +9,12 @@ import type {
   SimilarTopicMatch,
 } from "@/types";
 import { createResearch, fetchResearchStatus } from "@/api/research";
-import { useLocale } from "@/data/landing";
+import { messages, useLocale } from "@/data/landing";
 import { useResearchStream } from "@/hooks/useResearchStream";
 import { useResearchEventsReducer } from "@/hooks/useResearchEventsReducer";
 import { useConnections } from "@/hooks/useConnections";
 import { useActiveNode } from "@/hooks/useActiveNode";
+import { shouldBlockResearchCreation } from "@/utils/researchMaintenance";
 import { createRafThrottle } from "@/utils/rafThrottle";
 import { readPageScrollState } from "@/utils/scrollState";
 import { getSessionConnections } from "@/utils/sessionConnections";
@@ -55,7 +56,7 @@ function clearActiveSession(): void {
   }
 }
 
-type SessionPhase = "loading" | "similar" | "proposal" | "research" | "error";
+type SessionPhase = "loading" | "similar" | "proposal" | "research" | "maintenance" | "error";
 
 interface Props {
   sessionId: string;
@@ -140,6 +141,12 @@ export function SessionView({ sessionId }: Props) {
     didInit.current = true;
 
     if (sessionId === "new") {
+      if (shouldBlockResearchCreation(sessionId)) {
+        setPhase("maintenance");
+        setError(messages[locale].app.maintenanceNotice);
+        return;
+      }
+
       // New search -- POST to create session
       const topic = searchParams.get("topic");
       if (!topic) {
@@ -241,6 +248,11 @@ export function SessionView({ sessionId }: Props) {
 
   function handleViewSimilar() {
     if (!similarTopic || isNavigating) return;
+    if (shouldBlockResearchCreation("new")) {
+      setPhase("maintenance");
+      setError(messages[locale].app.maintenanceNotice);
+      return;
+    }
     setIsNavigating(true);
     createResearch(similarTopic.topic)
       .then((data) => {
@@ -270,6 +282,11 @@ export function SessionView({ sessionId }: Props) {
   function handleForceNewResearch() {
     const topic = searchParams.get("topic");
     if (!topic || isNavigating) return;
+    if (shouldBlockResearchCreation("new")) {
+      setPhase("maintenance");
+      setError(messages[locale].app.maintenanceNotice);
+      return;
+    }
     setIsNavigating(true);
     setPhase("loading");
     createResearch(topic, { force: true })
@@ -417,6 +434,18 @@ export function SessionView({ sessionId }: Props) {
         {phase === "error" && (
           <div className="flex min-h-[calc(100vh-3.5rem)] flex-col items-center justify-center gap-4">
             <p className="text-sm text-red-400">{error}</p>
+            <button
+              onClick={() => router.push("/app")}
+              className="cursor-pointer text-chrono-caption text-chrono-text-muted transition-colors hover:text-chrono-text-secondary"
+            >
+              {locale === "zh" ? "\u2190 返回首页" : "\u2190 Back to home"}
+            </button>
+          </div>
+        )}
+
+        {phase === "maintenance" && (
+          <div className="flex min-h-[calc(100vh-3.5rem)] flex-col items-center justify-center gap-4">
+            <p className="text-sm text-chrono-text-muted">{error}</p>
             <button
               onClick={() => router.push("/app")}
               className="cursor-pointer text-chrono-caption text-chrono-text-muted transition-colors hover:text-chrono-text-secondary"

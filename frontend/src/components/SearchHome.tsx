@@ -5,11 +5,11 @@ import { useRouter } from "next/navigation";
 import { createReplaySession } from "@/api/research";
 import { useLocale } from "@/data/landing";
 import type { ResearchSummary } from "@/types";
+import { RESEARCH_MAINTENANCE_ENABLED } from "@/utils/researchMaintenance";
 import { AppShell } from "./AppShell";
 import { SearchInput } from "./SearchInput";
 
 const ACTIVE_SESSION_KEY = "chrono-active-session";
-const RESEARCH_MAINTENANCE_ENABLED = true;
 
 interface ActiveSession {
   sessionId: string;

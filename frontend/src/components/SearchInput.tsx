@@ -78,7 +78,7 @@ export function SearchInput({
       <HistoryList
         onOpenResearch={onOpenResearch}
         locale={locale}
-        disabled={disabled}
+        disabled={isPending}
       />
     </div>
   );
