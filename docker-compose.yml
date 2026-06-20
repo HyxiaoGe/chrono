@@ -15,6 +15,8 @@ services:
     networks:
       - default
       - litellm_net
+      - postgres_net
+      - middleware_net
 
   frontend:
     image: ${CHRONO_FRONTEND_IMAGE:-chrono-frontend:local}
@@ -33,3 +35,9 @@ networks:
   litellm_net:
     external: true
     name: litellm-proxy_default
+  postgres_net:
+    external: true
+    name: postgres_default
+  middleware_net:
+    external: true
+    name: middleware_default

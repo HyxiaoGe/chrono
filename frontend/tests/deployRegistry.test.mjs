@@ -42,6 +42,15 @@ describe("deploy registry configuration", () => {
     assert.doesNotMatch(workflow, /docker compose up -d --build/);
   });
 
+  it("connects the backend to external dependency networks", async () => {
+    const compose = await readFile(new URL("docker-compose.yml", repoRoot), "utf8");
+
+    assert.match(compose, /backend:[\s\S]*networks:[\s\S]*-\s+postgres_net/);
+    assert.match(compose, /backend:[\s\S]*networks:[\s\S]*-\s+middleware_net/);
+    assert.match(compose, /postgres_net:[\s\S]*external:\s+true[\s\S]*name:\s+postgres_default/);
+    assert.match(compose, /middleware_net:[\s\S]*external:\s+true[\s\S]*name:\s+middleware_default/);
+  });
+
   it("uses domestic package mirrors during image builds", async () => {
     const [backendDockerfile, frontendDockerfile] = await Promise.all([
       readFile(new URL("backend/Dockerfile", repoRoot), "utf8"),
