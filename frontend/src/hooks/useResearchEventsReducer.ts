@@ -4,6 +4,7 @@ import { useCallback, useReducer } from "react";
 import type {
   CompleteData,
   NodeDetailEvent,
+  NodeStatus,
   ProgressData,
   SkeletonNodeData,
   SynthesisData,
@@ -21,6 +22,12 @@ export interface ResearchEventsState {
 type SkeletonEventData = {
   nodes: SkeletonNodeData[];
   partial?: boolean;
+};
+
+const STATUS_RANK: Record<NodeStatus, number> = {
+  skeleton: 0,
+  loading: 1,
+  complete: 2,
 };
 
 export type ResearchEventsAction =
@@ -44,7 +51,22 @@ function mergePartialSkeletonNodes(
   currentNodes: TimelineNode[],
   skeletonNodes: SkeletonNodeData[],
 ): TimelineNode[] {
-  const merged = [...currentNodes, ...skeletonNodes];
+  const mergedById = new Map(currentNodes.map((node) => [node.id, node]));
+  for (const node of skeletonNodes) {
+    const existing = mergedById.get(node.id);
+    if (!existing) {
+      mergedById.set(node.id, node);
+      continue;
+    }
+    const keepExistingState = STATUS_RANK[existing.status] > STATUS_RANK[node.status];
+    mergedById.set(node.id, {
+      ...node,
+      details: node.details ?? existing.details,
+      status: keepExistingState ? existing.status : node.status,
+      sources: Array.from(new Set([...node.sources, ...existing.sources])),
+    });
+  }
+  const merged = Array.from(mergedById.values());
   merged.sort((a, b) => a.date.localeCompare(b.date));
   return merged;
 }

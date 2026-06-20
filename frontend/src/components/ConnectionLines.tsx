@@ -1,20 +1,18 @@
 "use client";
 
 import { connColor, connDash } from "@/utils/design";
-import { TimelineConnection } from "@/types";
+import type { IndexedTimelineConnection } from "@/utils/timelineConnections";
 
 interface ConnectionLinesProps {
-  connections: TimelineConnection[];
+  connections: IndexedTimelineConnection[];
   positions: Record<string, { top: number }>;
   containerHeight: number;
-  hoveredId: string | null;
 }
 
 export default function ConnectionLines({
   connections,
   positions,
   containerHeight,
-  hoveredId,
 }: ConnectionLinesProps) {
   return (
     <svg
@@ -23,13 +21,9 @@ export default function ConnectionLines({
       viewBox={`0 0 1000 ${containerHeight}`}
       preserveAspectRatio="none"
     >
-      {connections.map((conn, i) => {
-        // Only render lines connected to the hovered node
-        const isActive = hoveredId && (conn.from_id === hoveredId || conn.to_id === hoveredId);
-        if (!isActive) return null;
-
-        const a = positions[conn.from_id];
-        const b = positions[conn.to_id];
+      {connections.map(({ connection, index }) => {
+        const a = positions[connection.from_id];
+        const b = positions[connection.to_id];
         if (!a || !b) return null;
 
         const cx = 500;
@@ -37,18 +31,18 @@ export default function ConnectionLines({
         const by = b.top;
         const dy = Math.abs(by - ay);
         const bulge = 160 + Math.min(120, dy * 0.35);
-        const sideSign = i % 2 === 0 ? -1 : 1;
+        const sideSign = index % 2 === 0 ? -1 : 1;
         const ctrlX = cx + sideSign * bulge;
 
         return (
           <path
-            key={i}
+            key={index}
             d={`M ${cx} ${ay} C ${ctrlX} ${ay + (by - ay) * 0.2}, ${ctrlX} ${ay + (by - ay) * 0.8}, ${cx} ${by}`}
             fill="none"
-            stroke={connColor(conn.type)}
+            stroke={connColor(connection.type)}
             strokeWidth={1.6}
             strokeOpacity={0.9}
-            strokeDasharray={connDash(conn.type)}
+            strokeDasharray={connDash(connection.type)}
             strokeLinecap="round"
           />
         );

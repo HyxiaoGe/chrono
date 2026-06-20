@@ -1,11 +1,20 @@
 "use client";
 
-import { useState, useMemo, useLayoutEffect, useRef } from "react";
+import { memo, useState, useMemo, useLayoutEffect, useRef } from "react";
 import type { TimelineNode, TimelineConnection } from "@/types";
 import NodeCard from "@/components/NodeCard";
 import AxisDot from "@/components/AxisDot";
 import YearSeparator from "@/components/YearSeparator";
 import ConnectionLines from "@/components/ConnectionLines";
+import {
+  keepPreviousTimelineMeasurementIfEqual,
+  type TimelineMeasurement,
+} from "@/utils/timelineMeasurement";
+import {
+  buildTimelineConnectionIndex,
+  type IndexedTimelineConnection,
+} from "@/utils/timelineConnections";
+import { areTimelinePropsEqual } from "@/utils/timelineMemo";
 
 interface TimelineProps {
   nodes: TimelineNode[];
@@ -25,7 +34,10 @@ type NodeRow = {
 };
 type Row = SepRow | NodeRow;
 
-export function Timeline({
+const EMPTY_RELATED_IDS = new Set<string>();
+const EMPTY_INDEXED_CONNECTIONS: IndexedTimelineConnection[] = [];
+
+function TimelineComponent({
   nodes,
   connections,
   selectedId,
@@ -33,10 +45,10 @@ export function Timeline({
   onSelect,
   onHover,
 }: TimelineProps) {
-  const [positions, setPositions] = useState<Record<string, { top: number }>>(
-    {},
-  );
-  const [containerH, setContainerH] = useState(0);
+  const [measurement, setMeasurement] = useState<TimelineMeasurement>({
+    positions: {},
+    containerHeight: 0,
+  });
   const innerRef = useRef<HTMLDivElement>(null);
 
   // Measure node vertical positions for SVG connection overlay
@@ -55,8 +67,12 @@ export function Timeline({
           pos[n.id] = { top: er.top - rect.top + er.height / 2 };
         }
       });
-      setPositions(pos);
-      setContainerH(rect.height);
+      setMeasurement((current) =>
+        keepPreviousTimelineMeasurementIfEqual(current, {
+          positions: pos,
+          containerHeight: rect.height,
+        }),
+      );
     };
 
     measure();
@@ -91,15 +107,16 @@ export function Timeline({
 
   // Related node highlighting -- only active on hover (not selection alone)
   const activeId = hoveredId;
+  const connectionIndex = useMemo(
+    () => buildTimelineConnectionIndex(connections),
+    [connections],
+  );
+  const activeConnectionEntry = activeId ? connectionIndex.get(activeId) : undefined;
   const related = useMemo(() => {
-    if (!activeId) return new Set<string>();
-    const s = new Set<string>();
-    connections.forEach((c) => {
-      if (c.from_id === activeId) s.add(c.to_id);
-      if (c.to_id === activeId) s.add(c.from_id);
-    });
-    return s;
-  }, [activeId, connections]);
+    return activeConnectionEntry?.relatedIds ?? EMPTY_RELATED_IDS;
+  }, [activeConnectionEntry]);
+  const activeConnections =
+    activeConnectionEntry?.connections ?? EMPTY_INDEXED_CONNECTIONS;
 
   const hasActive = !!activeId;
 
@@ -111,10 +128,9 @@ export function Timeline({
 
         {/* SVG connection overlay */}
         <ConnectionLines
-          connections={connections}
-          positions={positions}
-          containerHeight={containerH}
-          hoveredId={hoveredId}
+          connections={activeConnections}
+          positions={measurement.positions}
+          containerHeight={measurement.containerHeight}
         />
 
         {/* Rows */}
@@ -142,6 +158,7 @@ export function Timeline({
                 <div className="flex justify-end pr-4">
                   {side === "left" ? (
                     <div
+                      id={n.id}
                       className="w-full max-w-[440px]"
                       data-node-id={n.id}
                     >
@@ -167,6 +184,7 @@ export function Timeline({
                 <div className="flex justify-start pl-4">
                   {side === "right" ? (
                     <div
+                      id={n.id}
                       className="w-full max-w-[440px]"
                       data-node-id={n.id}
                     >
@@ -190,3 +208,5 @@ export function Timeline({
     </div>
   );
 }
+
+export const Timeline = memo(TimelineComponent, areTimelinePropsEqual);

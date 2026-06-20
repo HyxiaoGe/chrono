@@ -16,14 +16,16 @@ export interface NodeConnectionInfo {
   }[];
 }
 
-export type ConnectionMap = Map<string, NodeConnectionInfo>;
+export type ConnectionMap = ReadonlyMap<string, NodeConnectionInfo>;
+
+const EMPTY_CONNECTION_MAP: ConnectionMap = new Map();
 
 function buildConnectionMap(
   connections: TimelineConnection[],
   nodes: TimelineNode[],
 ): ConnectionMap {
   const titleMap = new Map(nodes.map((n) => [n.id, n.title]));
-  const map: ConnectionMap = new Map();
+  const map = new Map<string, NodeConnectionInfo>();
 
   function ensure(id: string): NodeConnectionInfo {
     let info = map.get(id);
@@ -52,12 +54,17 @@ function buildConnectionMap(
   return map;
 }
 
+export function getConnectionMap(
+  connections: TimelineConnection[] | undefined,
+  nodes: TimelineNode[],
+): ConnectionMap {
+  if (!connections || connections.length === 0) return EMPTY_CONNECTION_MAP;
+  return buildConnectionMap(connections, nodes);
+}
+
 export function useConnections(
   connections: TimelineConnection[] | undefined,
   nodes: TimelineNode[],
 ): ConnectionMap {
-  return useMemo(() => {
-    if (!connections || connections.length === 0) return new Map();
-    return buildConnectionMap(connections, nodes);
-  }, [connections, nodes]);
+  return useMemo(() => getConnectionMap(connections, nodes), [connections, nodes]);
 }

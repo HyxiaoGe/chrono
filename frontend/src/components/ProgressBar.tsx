@@ -1,10 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
+import { elapsedSecondsSince, formatElapsedSeconds } from "@/utils/progressTime";
 
 interface ProgressBarProps {
   phase: string;
-  elapsed: number;
+  startedAt: number;
   done: number;
   total: number;
   model: string;
@@ -25,7 +27,15 @@ function getStatusText(phase: string, done: number, total: number, isZh: boolean
   return isZh ? "正在生成总结…" : "synthesizing insights…";
 }
 
-export default function ProgressBar({ phase, elapsed, done, total, model, language }: ProgressBarProps) {
+export default function ProgressBar({
+  phase,
+  startedAt,
+  done,
+  total,
+  model,
+  language,
+}: ProgressBarProps) {
+  const [elapsed, setElapsed] = useState(() => elapsedSecondsSince(startedAt));
   const isZh = language.startsWith("zh");
   const idx = phases.findIndex((p) => p.key === phase);
   const pct = Math.min(
@@ -34,9 +44,15 @@ export default function ProgressBar({ phase, elapsed, done, total, model, langua
       ((idx + (phase === "detail" && total ? done / total : 0)) / phases.length) * 100
     )
   );
-  const m = Math.floor(elapsed / 60);
-  const s = elapsed % 60;
-  const time = m > 0 ? `${m}:${String(s).padStart(2, "0")}` : `0:${String(s).padStart(2, "0")}`;
+  const time = formatElapsedSeconds(elapsed);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setElapsed(elapsedSecondsSince(startedAt));
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [startedAt]);
 
   return (
     <div className="mb-6 rounded-xl border border-chrono-border/60 bg-chrono-surface/80 backdrop-blur-md overflow-hidden">

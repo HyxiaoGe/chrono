@@ -78,6 +78,72 @@ describe("researchEventsReducer", () => {
     assert.equal(next.nodes[0].is_gap_node, true);
   });
 
+  it("deduplicates repeated partial skeleton nodes by id", () => {
+    const state = researchEventsReducer(createInitialResearchEventsState(), {
+      type: "skeleton",
+      data: {
+        partial: true,
+        nodes: [
+          skeletonNode({ id: "tmp_001", date: "2007-01-09", title: "Original" }),
+          skeletonNode({ id: "tmp_002", date: "2008-07-11" }),
+        ],
+      },
+    });
+
+    const next = researchEventsReducer(state, {
+      type: "skeleton",
+      data: {
+        partial: true,
+        nodes: [
+          skeletonNode({ id: "tmp_001", date: "2007-01-10", title: "Updated" }),
+        ],
+      },
+    });
+
+    assert.deepEqual(
+      next.nodes.map((node) => node.id),
+      ["tmp_001", "tmp_002"],
+    );
+    assert.equal(next.nodes[0].title, "Updated");
+    assert.equal(next.nodes[0].date, "2007-01-10");
+  });
+
+  it("keeps completed node details when duplicate partial skeleton arrives", () => {
+    const completed = researchEventsReducer(
+      researchEventsReducer(createInitialResearchEventsState(), {
+        type: "skeleton",
+        data: {
+          partial: true,
+          nodes: [skeletonNode({ id: "tmp_001", title: "Original" })],
+        },
+      }),
+      {
+        type: "node_detail",
+        data: {
+          node_id: "tmp_001",
+          details: detail({ impact: "Completed detail." }),
+        },
+      },
+    );
+
+    const next = researchEventsReducer(completed, {
+      type: "skeleton",
+      data: {
+        partial: true,
+        nodes: [skeletonNode({ id: "tmp_001", title: "Updated skeleton" })],
+      },
+    });
+
+    assert.equal(next.nodes.length, 1);
+    assert.equal(next.nodes[0].title, "Updated skeleton");
+    assert.equal(next.nodes[0].status, "complete");
+    assert.equal(next.nodes[0].details?.impact, "Completed detail.");
+    assert.deepEqual(next.nodes[0].sources, [
+      "https://example.com/skeleton",
+      "https://example.com/detail",
+    ]);
+  });
+
   it("preserves existing details when a full skeleton update omits details", () => {
     const existingDetail = detail({ impact: "Existing impact." });
     const existingNode = {

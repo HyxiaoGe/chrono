@@ -3,73 +3,10 @@
 import { useState, useMemo, useRef, useLayoutEffect } from "react";
 import type { TimelineNode } from "@/types";
 import { sigColor } from "@/utils/design";
-
-/* ------------------------------------------------------------------ */
-/*  Era definition — auto-generated from node data                     */
-/* ------------------------------------------------------------------ */
-
-interface EraInfo {
-  key: string;
-  label: string;
-  caption: string;
-  years: number[];
-  nodes: TimelineNode[];
-  firstNodeId: string | undefined;
-  weight: number;
-}
-
-/**
- * Build eras from nodes. Uses phase_name when available,
- * otherwise groups consecutive nodes by year.
- */
-function buildEras(nodes: TimelineNode[]): EraInfo[] {
-  if (nodes.length === 0) return [];
-
-  // Try phase_name grouping first
-  const hasPhases = nodes.some((n) => n.phase_name);
-
-  if (hasPhases) {
-    const phaseMap = new Map<string, TimelineNode[]>();
-    for (const n of nodes) {
-      const key = n.phase_name || "Other";
-      const arr = phaseMap.get(key) || [];
-      arr.push(n);
-      phaseMap.set(key, arr);
-    }
-    return Array.from(phaseMap.entries()).map(([label, eraNodes]) => {
-      const years = [...new Set(eraNodes.map((n) => parseInt(n.date.slice(0, 4), 10)))].sort();
-      return {
-        key: label.toLowerCase().replace(/\s+/g, "-"),
-        label,
-        caption: `${years[0]}${years.length > 1 ? `–${years[years.length - 1]}` : ""}`,
-        years,
-        nodes: eraNodes,
-        firstNodeId: eraNodes[0]?.id,
-        weight: Math.max(1, eraNodes.length),
-      };
-    });
-  }
-
-  // Fallback: group by year
-  const yearMap = new Map<number, TimelineNode[]>();
-  for (const n of nodes) {
-    const yr = parseInt(n.date.slice(0, 4), 10);
-    const arr = yearMap.get(yr) || [];
-    arr.push(n);
-    yearMap.set(yr, arr);
-  }
-  return Array.from(yearMap.entries())
-    .sort(([a], [b]) => a - b)
-    .map(([yr, eraNodes]) => ({
-      key: `y${yr}`,
-      label: String(yr),
-      caption: `${eraNodes.length} events`,
-      years: [yr],
-      nodes: eraNodes,
-      firstNodeId: eraNodes[0]?.id,
-      weight: Math.max(1, eraNodes.length),
-    }));
-}
+import {
+  buildEraNavigationState,
+  selectCurrentEraKey,
+} from "@/utils/eraNavigation";
 
 /* ------------------------------------------------------------------ */
 /*  Props                                                              */
@@ -119,42 +56,17 @@ export default function EraNavigator({
     return () => window.removeEventListener("resize", measure);
   }, [nodes.length]);
 
-  const eraData = useMemo(() => buildEras(nodes), [nodes]);
-  const totalWeight = eraData.reduce((s, e) => s + e.weight, 0) || 1;
-  const eraMarkerPositions = useMemo(() => {
-    return eraData.slice(1).map((era, index) => {
-      const accumulatedWeight = eraData
-        .slice(0, index + 1)
-        .reduce((sum, item) => sum + item.weight, 0);
-      return {
-        key: era.key,
-        left: (accumulatedWeight / totalWeight) * 100,
-      };
-    });
-  }, [eraData, totalWeight]);
+  const eraNavigation = useMemo(() => buildEraNavigationState(nodes), [nodes]);
+  const eraData = eraNavigation.eras;
 
   // scroll progress 0..1
   const progress = scrollHeight > viewportHeight ? scrollTop / (scrollHeight - viewportHeight) : 0;
 
   // determine current era from activeNode or scroll position
-  const currentEra = useMemo(() => {
-    if (activeNodeId) {
-      const n = nodes.find((x) => x.id === activeNodeId);
-      if (n) {
-        const yr = parseInt(n.date.slice(0, 4), 10);
-        const era = eraData.find((e) => e.years.includes(yr));
-        if (era) return era.key;
-      }
-    }
-    // fallback: scroll position
-    let acc = 0;
-    for (const e of eraData) {
-      const w = e.weight / totalWeight;
-      if (progress <= acc + w + 0.001) return e.key;
-      acc += w;
-    }
-    return eraData[eraData.length - 1]?.key;
-  }, [activeNodeId, nodes, eraData, progress, totalWeight]);
+  const currentEra = useMemo(
+    () => selectCurrentEraKey(eraNavigation, { activeNodeId, progress }),
+    [activeNodeId, eraNavigation, progress],
+  );
 
   if (eraData.length === 0) return null;
 
@@ -189,7 +101,6 @@ export default function EraNavigator({
           {eraData.map((era) => {
             const isCurrent = era.key === currentEra;
             const isHover = era.key === hoverEra;
-            const revCount = era.nodes.filter((n) => n.significance === "revolutionary").length;
             const yearRange =
               era.years.length > 1
                 ? `'${String(era.years[0]).slice(2)}–'${String(era.years[era.years.length - 1]).slice(2)}`
@@ -221,9 +132,9 @@ export default function EraNavigator({
                   <span className="text-[10px] font-mono tabular-nums text-chrono-text-muted/60 shrink-0">
                     {yearRange}
                   </span>
-                  {revCount > 0 && (
+                  {era.revolutionaryCount > 0 && (
                     <span className="ml-auto text-[9px] font-mono text-chrono-revolutionary/70 shrink-0">
-                      ★{revCount}
+                      ★{era.revolutionaryCount}
                     </span>
                   )}
                 </div>
@@ -328,7 +239,7 @@ export default function EraNavigator({
           className="absolute inset-y-0 left-0 bg-chrono-accent/70 rounded-full transition-[width] duration-100"
           style={{ width: `${Math.round(progress * 100)}%` }}
         />
-        {eraMarkerPositions.map((marker) => (
+        {eraNavigation.markerPositions.map((marker) => (
           <span
             key={marker.key}
             className="absolute top-0 bottom-0 w-px bg-chrono-border/40"

@@ -14,6 +14,11 @@ import { useResearchStream } from "@/hooks/useResearchStream";
 import { useResearchEventsReducer } from "@/hooks/useResearchEventsReducer";
 import { useConnections } from "@/hooks/useConnections";
 import { useActiveNode } from "@/hooks/useActiveNode";
+import { createRafThrottle } from "@/utils/rafThrottle";
+import { readPageScrollState } from "@/utils/scrollState";
+import { getSessionConnections } from "@/utils/sessionConnections";
+import { deriveSessionNodeState } from "@/utils/sessionNodeState";
+import { elapsedSecondsSince, formatElapsedSeconds } from "@/utils/progressTime";
 import { AppShell } from "./AppShell";
 import { ProposalCard } from "./ProposalCard";
 import { Timeline } from "./Timeline";
@@ -97,14 +102,35 @@ export function SessionView({ sessionId }: Props) {
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const [elapsed, setElapsed] = useState(0);
   const [scrollState, setScrollState] = useState({
     scrollTop: 0,
     scrollHeight: 1,
     viewportHeight: 1,
   });
+  const [researchStartedAt, setResearchStartedAt] = useState(() => Date.now());
+  const researchStartedAtRef = useRef(researchStartedAt);
+  const [completionElapsedSeconds, setCompletionElapsedSeconds] = useState<number | null>(null);
 
-  const [researchStartTime] = useState<number>(Date.now());
+  const updateScrollState = useCallback(() => {
+    setScrollState((current) => {
+      const next = readPageScrollState();
+      if (
+        current.scrollTop === next.scrollTop &&
+        current.scrollHeight === next.scrollHeight &&
+        current.viewportHeight === next.viewportHeight
+      ) {
+        return current;
+      }
+      return next;
+    });
+  }, []);
+
+  const markResearchStarted = useCallback(() => {
+    const startedAt = Date.now();
+    researchStartedAtRef.current = startedAt;
+    setResearchStartedAt(startedAt);
+    setCompletionElapsedSeconds(null);
+  }, []);
 
   // --- Init ---
   const didInit = useRef(false);
@@ -138,6 +164,7 @@ export function SessionView({ sessionId }: Props) {
           window.history.replaceState(null, "", `/app/session/${sid}`);
 
           if (data.cached) {
+            markResearchStarted();
             setActiveSession({ sessionId: sid, topic: data.proposal.topic });
             setStreamSessionId(sid);
             setPhase("research");
@@ -160,6 +187,7 @@ export function SessionView({ sessionId }: Props) {
         if (data.status === "proposal_ready") {
           setPhase("proposal");
         } else if (data.status === "executing" || data.status === "completed") {
+          markResearchStarted();
           setPhase("research");
           setStreamSessionId(sessionId);
         } else if (data.status === "failed") {
@@ -176,37 +204,26 @@ export function SessionView({ sessionId }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // --- Elapsed timer (for ProgressBar) ---
-  useEffect(() => {
-    if (completeData) return;
-    if (phase !== "research") return;
-    const timer = setInterval(
-      () => setElapsed(Math.floor((Date.now() - researchStartTime) / 1000)),
-      1000,
-    );
-    return () => clearInterval(timer);
-  }, [researchStartTime, completeData, phase]);
-
   // --- Scroll tracking for MiniMap viewport indicator ---
   useEffect(() => {
-    const onScroll = () => {
-      setScrollState({
-        scrollTop: window.scrollY,
-        scrollHeight: document.documentElement.scrollHeight,
-        viewportHeight: window.innerHeight,
-      });
-    };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
+    const scheduleScrollStateUpdate = createRafThrottle(updateScrollState);
+    updateScrollState();
+    window.addEventListener("scroll", scheduleScrollStateUpdate, { passive: true });
+    window.addEventListener("resize", scheduleScrollStateUpdate);
     return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
+      scheduleScrollStateUpdate.cancel();
+      window.removeEventListener("scroll", scheduleScrollStateUpdate);
+      window.removeEventListener("resize", scheduleScrollStateUpdate);
     };
-  }, [nodes.length, selectedNodeId]);
+  }, [updateScrollState]);
+
+  useEffect(() => {
+    updateScrollState();
+  }, [nodes.length, selectedNodeId, updateScrollState]);
 
   function handleConfirm() {
     if (!proposal || !realSessionId) return;
+    markResearchStarted();
     setActiveSession({ sessionId: realSessionId, topic: proposal.topic });
     setStreamSessionId(realSessionId);
     setPhase("research");
@@ -233,6 +250,7 @@ export function SessionView({ sessionId }: Props) {
         window.history.replaceState(null, "", `/app/session/${sid}`);
 
         if (data.cached) {
+          markResearchStarted();
           setActiveSession({ sessionId: sid, topic: data.proposal.topic });
           setStreamSessionId(sid);
           setPhase("research");
@@ -281,6 +299,14 @@ export function SessionView({ sessionId }: Props) {
     });
   }, []);
 
+  const handleSelectNode = useCallback((id: string) => {
+    setSelectedNodeId((currentId) => (currentId === id ? null : id));
+  }, []);
+
+  const handleCloseDetailPanel = useCallback(() => {
+    setSelectedNodeId(null);
+  }, []);
+
   // --- SSE ---
   useResearchStream(streamSessionId, {
     onProgress,
@@ -288,6 +314,7 @@ export function SessionView({ sessionId }: Props) {
     onNodeDetail,
     onSynthesis,
     onComplete: useCallback((data: CompleteData) => {
+      setCompletionElapsedSeconds(elapsedSecondsSince(researchStartedAtRef.current));
       onComplete(data);
       clearActiveSession();
     }, [onComplete]),
@@ -307,23 +334,21 @@ export function SessionView({ sessionId }: Props) {
   // --- Derived ---
   const language = proposal?.language ?? "en";
   const connectionMap = useConnections(synthesisData?.connections, nodes);
-  const connections = synthesisData?.connections ?? [];
+  const connections = getSessionConnections(synthesisData);
 
   const completionTimeStr = useMemo(() => {
     if (!completeData) return "";
-    const m = Math.floor(elapsed / 60);
-    const s = elapsed % 60;
-    return m > 0 ? `${m}:${String(s).padStart(2, "0")}` : `0:${String(s).padStart(2, "0")}`;
-  }, [completeData, elapsed]);
+    return formatElapsedSeconds(
+      completionElapsedSeconds ?? elapsedSecondsSince(researchStartedAtRef.current),
+    );
+  }, [completeData, completionElapsedSeconds]);
 
   const nodeIds = useMemo(() => nodes.map((n) => n.id), [nodes]);
   const activeNodeId = useActiveNode(nodeIds);
-
-  const activeNode = activeNodeId
-    ? nodes.find((n) => n.id === activeNodeId)
-    : null;
-  const activeYear = activeNode ? activeNode.date.slice(0, 4) : null;
-  const activePhase = activeNode?.phase_name ?? null;
+  const sessionNodeState = useMemo(
+    () => deriveSessionNodeState(nodes, { activeNodeId, selectedNodeId }),
+    [activeNodeId, nodes, selectedNodeId],
+  );
 
   // --- Non-research phases: wrapped in AppShell ---
   if (phase !== "research") {
@@ -333,8 +358,8 @@ export function SessionView({ sessionId }: Props) {
         onToggleLocale={toggleLocale}
         mode="session"
         topic={proposal?.topic ?? searchParams.get("topic") ?? undefined}
-        activeYear={activeYear}
-        activePhase={activePhase}
+        activeYear={sessionNodeState.activeYear}
+        activePhase={sessionNodeState.activePhase}
         onBack={handleNewResearch}
       >
         {phase === "loading" && (
@@ -435,7 +460,7 @@ export function SessionView({ sessionId }: Props) {
         {nodes.length >= 3 && (
           <EraNavigator
             nodes={nodes}
-            activeNodeId={selectedNodeId}
+            activeNodeId={selectedNodeId ?? activeNodeId}
             hoveredId={hoveredId}
             onJumpToNode={handleNavigateToNode}
             onHoverNode={setHoveredId}
@@ -451,9 +476,10 @@ export function SessionView({ sessionId }: Props) {
           <div className="min-w-0 flex-1 pb-[60vh]">
             {!completeData && researchPhase && (
               <ProgressBar
+                key={researchStartedAt}
                 phase={researchPhase}
-                elapsed={elapsed}
-                done={nodes.filter((n) => n.status === "complete").length}
+                startedAt={researchStartedAt}
+                done={sessionNodeState.completedNodeCount}
                 total={nodes.length}
                 model={researchModel}
                 language={language}
@@ -482,9 +508,7 @@ export function SessionView({ sessionId }: Props) {
               connections={connections}
               selectedId={selectedNodeId}
               hoveredId={hoveredId}
-              onSelect={(id) =>
-                setSelectedNodeId(id === selectedNodeId ? null : id)
-              }
+              onSelect={handleSelectNode}
               onHover={setHoveredId}
             />
 
@@ -509,10 +533,10 @@ export function SessionView({ sessionId }: Props) {
           {/* RIGHT: DetailPanel */}
           {selectedNodeId && (
             <DetailPanel
-              node={nodes.find((n) => n.id === selectedNodeId) ?? null}
+              node={sessionNodeState.selectedNode}
               language={language}
               connectionMap={connectionMap}
-              onClose={() => setSelectedNodeId(null)}
+              onClose={handleCloseDetailPanel}
               onNavigateToNode={handleNavigateToNode}
             />
           )}

@@ -1,12 +1,14 @@
 "use client";
 
-import React from "react";
-import type { TimelineNode } from "@/types";
-import type { ConnectionMap } from "@/hooks/useConnections";
+import { memo } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Chip } from "@/components/ui/Chip";
 import { sigColor, connColor } from "@/utils/design";
 import { tagLabel } from "@/utils/tags";
+import {
+  areDetailPanelPropsEqual,
+  type DetailPanelMemoProps,
+} from "@/utils/detailPanelMemo";
 
 /* ------------------------------------------------------------------ */
 /*  Bilingual labels                                                   */
@@ -131,19 +133,13 @@ function RelatedRow({
 /*  Props                                                              */
 /* ------------------------------------------------------------------ */
 
-interface DetailPanelProps {
-  node: TimelineNode | null;
-  language: string;
-  connectionMap: ConnectionMap;
-  onClose: () => void;
-  onNavigateToNode: (id: string) => void;
-}
+type DetailPanelProps = DetailPanelMemoProps;
 
 /* ------------------------------------------------------------------ */
 /*  DetailPanel                                                        */
 /* ------------------------------------------------------------------ */
 
-export function DetailPanel({
+function DetailPanelComponent({
   node,
   language,
   connectionMap,
@@ -543,3 +539,5 @@ export function DetailPanel({
     </aside>
   );
 }
+
+export const DetailPanel = memo(DetailPanelComponent, areDetailPanelPropsEqual);

@@ -1,26 +1,18 @@
 "use client";
 
-import { TimelineNode } from "@/types";
+import { memo } from "react";
+import type { NodeCardMemoProps } from "@/utils/nodeCardMemo";
+import { areNodeCardPropsEqual } from "@/utils/nodeCardMemo";
 import { sigColor } from "@/utils/design";
 
-interface NodeCardProps {
-  node: TimelineNode;
-  isSelected: boolean;
-  isRelated: boolean;
-  dimmed: boolean;
-  onClick: (id: string) => void;
-  onHover: (id: string | null) => void;
-  side: "left" | "right";
-}
-
-export default function NodeCard({
+function NodeCard({
   node,
   isSelected,
   isRelated,
   dimmed,
   onClick,
   onHover,
-}: NodeCardProps) {
+}: NodeCardMemoProps) {
   const sig = node.significance;
   const color = sigColor(sig);
   const base = "cursor-pointer transition-all duration-200";
@@ -129,3 +121,5 @@ export default function NodeCard({
     </div>
   );
 }
+
+export default memo(NodeCard, areNodeCardPropsEqual);
